@@ -4,7 +4,9 @@ Página interactiva para exponer el tema **Teoría de Juegos** en la asignatura 
 
 ## Empezar
 
-Abre `index.html` en Chrome, Edge o Firefox. No requiere instalación.
+**Ver en línea:** <https://sebasramirezm.github.io/teoria-de-juegos/>
+
+O abre `index.html` en Chrome, Edge o Firefox. No requiere instalación.
 
 - [Guía de ejecución](GUIA_EJECUCION.md): cómo abrir, preparar y manejar la página.
 - [Guía de exposición](GUIA_EXPOSICION.md): qué decir y cómo usar cada interacción.

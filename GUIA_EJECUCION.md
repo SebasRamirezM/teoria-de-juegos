@@ -21,11 +21,9 @@ Cómo abrir, preparar y manejar la página interactiva **Teoría de Juegos** dur
 Usa **Chrome, Edge o Firefox** actualizados. Todo funciona sin servidor.
 
 ### Opción B: GitHub Pages (un enlace para toda la clase)
-1. En el repositorio, ve a **Settings → Pages**.
-2. En *Source* elige **Deploy from a branch**, rama `main`, carpeta `/ (root)` y guarda.
-3. En uno o dos minutos aparece la dirección `https://<usuario>.github.io/<repositorio>/`.
+La página está publicada en <https://sebasramirezm.github.io/teoria-de-juegos/>. Cada cambio que se suba a la rama `main` se publica solo en uno o dos minutos.
 
-GitHub Pages en cuentas gratuitas solo funciona si el repositorio es **público**.
+Si algún día deja de funcionar, revisa **Settings → Pages** en el repositorio: *Source* debe ser **Deploy from a branch**, rama `main`, carpeta `/ (root)`. GitHub Pages en cuentas gratuitas solo funciona si el repositorio es **público**.
 
 ### Opción C: enlace de Claude
 La versión publicada como artefacto está en <https://claude.ai/artifact/L8QiX2fk3LEnbyw2CmqzjQ>. Es privada: para que otros la abran hay que compartirla desde el menú **Share** de la página.
