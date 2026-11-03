@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teoría de Juegos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una sola columna de "capítulos" sobre papel cuadriculado; cada jugador tiene su color (A coral, B verde azulado) y el oro marca siempre el equilibrio */
+:root{
+  --bg:#EDF0F5; --surface:#FFFFFF; --surface-2:#F5F7FA; --ink:#141B2D; --muted:#566077; --line:#D5DBE5;
+  --a:#D4532F; --a-soft:#FBE3DA; --b:#11806E; --b-soft:#D3EEE8; --eq:#C08308; --eq-soft:#F8EBCB;
+  --grid:rgba(20,27,45,.055); --shadow:0 1px 2px rgba(20,27,45,.05),0 10px 30px -12px rgba(20,27,45,.18);
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1320; --surface:#151D2F; --surface-2:#1A2338; --ink:#E6EBF4; --muted:#9BA6BC; --line:#2A3550;
+  --a:#FF8668; --a-soft:rgba(255,134,104,.15); --b:#41C9B2; --b-soft:rgba(65,201,178,.14); --eq:#F1BE4C; --eq-soft:rgba(241,190,76,.15);
+  --grid:rgba(230,235,244,.04); --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 34px -14px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1320; --surface:#151D2F; --surface-2:#1A2338; --ink:#E6EBF4; --muted:#9BA6BC; --line:#2A3550;
+  --a:#FF8668; --a-soft:rgba(255,134,104,.15); --b:#41C9B2; --b-soft:rgba(65,201,178,.14); --eq:#F1BE4C; --eq-soft:rgba(241,190,76,.15);
+  --grid:rgba(230,235,244,.04); --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 34px -14px rgba(0,0,0,.6); color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:36px 36px;color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.015em}
+p{margin:0}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--eq);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:1.12rem;color:var(--muted);max-width:62ch}
+.mono{font-family:var(--f-mono)}
+.ca{color:var(--a)} .cb{color:var(--b)} .ceq{color:var(--eq)}
+
+/* ---------- barra superior ---------- */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:56px}
+.brand{font-family:var(--f-display);font-weight:800;font-size:1.05rem;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-grid;grid-template-columns:1fr 1fr;width:20px;height:20px;gap:2px}
+.brand i b{border-radius:2px;background:var(--line)} .brand i b:nth-child(1){background:var(--a)} .brand i b:nth-child(4){background:var(--b)}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-left:auto;min-width:0}
+.nav::-webkit-scrollbar{display:none}
+.nav a{font-family:var(--f-mono);font-size:.78rem;text-decoration:none;color:var(--muted);padding:6px 9px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
+.nav a:hover{color:var(--ink);background:var(--surface)}
+.nav a.on{background:var(--ink);color:var(--bg)}
+.progress{position:absolute;left:0;bottom:-1px;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--a),var(--eq),var(--b))}
+
+/* ---------- botones y controles ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:10px 20px;font-weight:600;text-decoration:none;cursor:pointer;transition:transform .15s,background .2s,color .2s,border-color .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-ink{background:var(--ink);color:var(--bg)}
+.btn-a{background:var(--a);border-color:var(--a);color:#fff}
+.btn-b{background:var(--b);border-color:var(--b);color:#fff}
+.btn-sm{padding:7px 14px;font-size:.88rem}
+.btn[disabled]{opacity:.4;cursor:not-allowed;transform:none}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.field{display:grid;gap:4px}
+.field label{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;color:var(--muted)}
+.field output{font-family:var(--f-mono);color:var(--ink);font-weight:600}
+
+/* ---------- hero ---------- */
+.hero{padding-block:64px 80px}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.hero h1{font-size:clamp(3.2rem,8.4vw,6.4rem);font-weight:800;letter-spacing:-.035em;line-height:.95;margin-top:14px}
+.hero h1 span{display:block;color:transparent;-webkit-text-stroke:2px var(--ink)}
+.hero-sub{font-family:var(--f-display);font-weight:500;font-size:1.25rem;margin-top:18px;max-width:30ch}
+.hero .lede{margin-top:18px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.kbd-hint{margin-top:18px;font-size:.82rem;color:var(--muted)}
+kbd{font-family:var(--f-mono);font-size:.78rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--surface)}
+.hero h1,.hero-sub,.hero .lede,.cta,.matrix-card{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+.hero-sub{animation-delay:.08s}.hero .lede{animation-delay:.16s}.cta{animation-delay:.24s}.matrix-card{animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* ---------- matriz de pagos ---------- */
+.matrix-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:var(--shadow);margin:0}
+.mx-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.mx{display:grid;gap:8px;grid-template-columns:auto repeat(var(--cols,2),minmax(0,1fr))}
+.mx-h{font-family:var(--f-mono);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;padding:4px}
+.mx-ha{color:var(--a);justify-content:flex-end;padding-right:10px}
+.mx-hb{color:var(--b)}
+.cell{position:relative;aspect-ratio:1.35;max-width:100%;border:1.5px solid var(--line);border-radius:12px;background:linear-gradient(to top right,transparent calc(50% - .75px),var(--line) calc(50% - .75px),var(--line) calc(50% + .75px),transparent calc(50% + .75px)),var(--surface-2);cursor:pointer;transition:border-color .25s,box-shadow .35s,background-color .25s;padding:0}
+.cell:hover{border-color:var(--muted)}
+.cell .pa,.cell .pb{position:absolute;font-family:var(--f-display);font-weight:700;font-size:clamp(1.3rem,3vw,2rem);line-height:1;transition:transform .35s}
+.cell .pa{left:14%;bottom:14%;color:var(--a)}
+.cell .pb{right:14%;top:14%;color:var(--b)}
+.cell .pa.best,.cell .pb.best{transform:scale(1.18)}
+.cell .pa.best::after,.cell .pb.best::after{content:"";position:absolute;inset:-7px -9px;border:2px solid currentColor;border-radius:50%;animation:pop .35s ease-out both}
+@keyframes pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+.cell.nash{border-color:var(--eq);box-shadow:0 0 0 4px var(--eq-soft);background-color:var(--eq-soft)}
+.cell.nash::before{content:"Nash";position:absolute;left:50%;top:-11px;transform:translateX(-50%);font-family:var(--f-mono);font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--eq);color:var(--surface);padding:2px 8px;border-radius:999px;animation:pop .35s ease-out both}
+.cell.pareto{border-style:dashed;border-color:var(--ink)}
+.cell.sel{border-color:var(--ink)}
+.mx-explain{min-height:4.8em;margin-top:18px;font-size:.95rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.mx-explain b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend span::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--c)}
+
+/* ---------- capítulos ---------- */
+.chapter{padding-block:88px;border-top:1px solid var(--line)}
+.ch-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:start;margin-bottom:44px}
+.ch-num{font-family:var(--f-display);font-weight:800;font-size:clamp(3.6rem,8vw,6rem);line-height:.82;color:transparent;-webkit-text-stroke:1.5px var(--muted);opacity:.55;font-variant-numeric:tabular-nums}
+.ch-head h2{font-size:clamp(2rem,4.2vw,3.1rem);font-weight:800;margin:6px 0 14px}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;min-width:0}
+.card h3{font-size:1.2rem;font-weight:700;margin-bottom:8px}
+.card p{color:var(--muted);font-size:.97rem}
+.card .tag{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);letter-spacing:.04em;display:block;margin-bottom:10px}
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:var(--shadow);min-width:0}
+.lab-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.lab-head h3{font-size:1.5rem;font-weight:800}
+.lab-head p{color:var(--muted);font-size:.95rem;margin-top:6px;max-width:58ch}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--eq-soft);color:var(--eq);font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.formula{font-family:var(--f-mono);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:.95rem;overflow-x:auto;white-space:nowrap}
+.formula sub,.formula sup{font-size:.7em}
+.stack{display:grid;gap:28px}
+.note{font-size:.84rem;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:.9rem}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:28px;align-items:start}
+
+/* piezas */
+.piece svg{width:38px;height:38px;margin-bottom:14px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.piece svg .fa{stroke:var(--a)} .piece svg .fb{stroke:var(--b)}
+.transversal{margin-top:36px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+
+/* fundadores y línea de tiempo */
+.founder .yr{font-family:var(--f-display);font-weight:800;font-size:2.4rem;line-height:1;margin-bottom:10px}
+.timeline{margin-top:40px}
+.tl-track{position:relative;display:flex;gap:0;overflow-x:auto;padding:30px 4px 12px;scrollbar-width:thin}
+.tl-track::before{content:"";position:absolute;left:0;right:0;top:44px;height:2px;background:var(--line);min-width:100%}
+.tl-dot{flex:0 0 auto;min-width:62px;display:grid;justify-items:center;gap:10px;background:none;border:0;cursor:pointer;padding:6px 4px;position:relative;z-index:1}
+.tl-dot i{width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--muted);transition:transform .2s,background .2s,border-color .2s}
+.tl-dot span{font-family:var(--f-mono);font-size:.74rem;color:var(--muted)}
+.tl-dot:hover i{transform:scale(1.25)}
+.tl-dot[aria-selected="true"] i{background:var(--eq);border-color:var(--eq);transform:scale(1.35);box-shadow:0 0 0 5px var(--eq-soft)}
+.tl-dot[aria-selected="true"] span{color:var(--ink);font-weight:600}
+.tl-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center;margin-top:10px}
+.tl-card .big{font-family:var(--f-display);font-weight:800;font-size:3rem;color:var(--eq);line-height:1}
+.tl-card h3{font-size:1.25rem}
+.tl-card p{color:var(--muted);margin-top:4px}
+.tl-nav{display:flex;gap:8px}
+.tl-swap{animation:swap .35s ease-out}
+@keyframes swap{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+
+/* anillos epistémicos */
+.rings{position:relative;aspect-ratio:1;max-width:100%;width:min(100%,400px);margin:0 auto;display:grid;place-items:center}
+.ring{position:absolute;border-radius:50%;border:1.5px solid var(--line);display:flex;justify-content:center;align-items:flex-start;padding-top:10px;font-size:.78rem;color:var(--muted);text-align:center;animation:breathe 6s ease-in-out infinite}
+.ring:nth-child(1){inset:0;border-color:var(--b);color:var(--b)}
+.ring:nth-child(2){inset:13%;border-color:var(--a);color:var(--a);animation-delay:.4s}
+.ring:nth-child(3){inset:26%;border-color:var(--b);color:var(--b);animation-delay:.8s}
+.ring:nth-child(4){inset:39%;border-color:var(--eq);color:var(--eq);animation-delay:1.2s;align-items:center;padding:0;background:var(--eq-soft);font-weight:600;font-size:.82rem}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+
+/* juego PD */
+.game{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px}
+.opp{display:flex;flex-wrap:wrap;gap:6px}
+.opp button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:.85rem;cursor:pointer;transition:background .2s,border-color .2s}
+.opp button[aria-pressed="true"]{background:var(--b-soft);border-color:var(--b);color:var(--b);font-weight:600}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+.score{border-radius:14px;padding:14px 16px;background:var(--surface-2);border:1px solid var(--line)}
+.score small{display:block;font-size:.8rem;color:var(--muted)}
+.score b{font-family:var(--f-display);font-size:2.6rem;line-height:1.05;font-variant-numeric:tabular-nums;display:inline-block}
+.score.you b{color:var(--a)} .score.rival b{color:var(--b)}
+.bump{animation:bump .4s}
+@keyframes bump{40%{transform:scale(1.18)}}
+.hist{display:grid;grid-template-columns:70px repeat(10,minmax(0,1fr));gap:5px;align-items:center;font-size:.78rem;color:var(--muted)}
+.hist .slot{aspect-ratio:1;max-width:100%;border-radius:7px;border:1.5px dashed var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-weight:600;font-size:.8rem}
+.slot.C{border-style:solid;color:#fff}
+.slot.C.y{background:var(--a);border-color:var(--a)} .slot.C.r{background:var(--b);border-color:var(--b)}
+.slot.D{border-style:solid;border-color:var(--ink);background:var(--surface);color:var(--ink)}
+.slot.new{animation:pop .3s ease-out}
+.moves{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap}
+.moves .btn{flex:1 1 140px;justify-content:center;padding:14px}
+.game-msg{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--surface-2);font-size:.95rem;min-height:3.2em}
+.game-msg b{color:var(--ink)}
+.mini-mx{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;font-size:.82rem;margin-top:8px}
+.mini-mx div{padding:8px;border-radius:8px;background:var(--surface-2);text-align:center;font-family:var(--f-mono)}
+.mini-mx .h{background:none;color:var(--muted);font-size:.72rem}
+.mini-mx .hl{outline:2px solid var(--eq);background:var(--eq-soft)}
+.bars{display:grid;gap:10px;margin-top:14px}
+.bar-row{display:grid;grid-template-columns:120px minmax(0,1fr) 54px;gap:10px;align-items:center;font-size:.85rem}
+.bar-row .track{height:14px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.bar-row .fill{height:100%;width:0;border-radius:999px;background:var(--muted);transition:width 1s cubic-bezier(.2,.7,.2,1)}
+.bar-row.top .fill{background:var(--eq)}
+.bar-row output{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+
+/* rubinstein */
+.pie{display:flex;height:56px;border-radius:12px;overflow:hidden;margin:18px 0 10px;font-family:var(--f-display);font-weight:700;color:#fff;font-size:1.2rem}
+.pie div{display:flex;align-items:center;padding:0 14px;transition:flex-basis .45s cubic-bezier(.2,.7,.2,1);white-space:nowrap;overflow:hidden}
+.pie .pa{background:var(--a)} .pie .pb{background:var(--b);justify-content:flex-end}
+
+/* cadena de tiendas */
+.stores{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:5px;margin:20px 0 14px}
+.store{aspect-ratio:.8;max-width:100%;border-radius:6px;border:1.5px solid var(--line);background:var(--surface-2);display:grid;place-items:center;font-family:var(--f-mono);font-size:.62rem;color:var(--muted);transition:background .25s,border-color .25s,color .25s}
+.store.enter{background:var(--b-soft);border-color:var(--b);color:var(--b)}
+.store.fight{background:var(--a);border-color:var(--a);color:#fff}
+.store.out{background:transparent;border-style:dashed;opacity:.55}
+
+/* concurso de belleza */
+.axis{position:relative;height:150px;margin:18px 6px 4px}
+.axis .line{position:absolute;left:0;right:0;bottom:30px;height:2px;background:var(--line)}
+.axis .tick{position:absolute;bottom:0;transform:translateX(-50%);font-family:var(--f-mono);font-size:.72rem;color:var(--muted);text-align:center;white-space:nowrap}
+.axis .lvl{position:absolute;bottom:30px;width:2px;height:62px;background:var(--muted);opacity:.5;transform:translateX(-1px)}
+.axis .lvl span{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-family:var(--f-mono);font-size:.7rem;white-space:nowrap;color:var(--muted)}
+.axis .lvl.nash{background:var(--eq);opacity:1}
+.axis .lvl.nash span{color:var(--eq);font-weight:600}
+.axis .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--b);opacity:.75;transform:translate(-50%,50%);transition:left .6s cubic-bezier(.2,.7,.2,1),bottom .6s}
+.axis .you{position:absolute;bottom:30px;transform:translateX(-50%);display:grid;justify-items:center;transition:left .4s cubic-bezier(.2,.7,.2,1)}
+.axis .you i{width:16px;height:16px;border-radius:50%;background:var(--a);border:3px solid var(--surface);box-shadow:0 0 0 1.5px var(--a);transform:translateY(8px)}
+.axis .you span{font-family:var(--f-mono);font-size:.72rem;color:var(--a);font-weight:600;margin-bottom:6px}
+.axis .mark{position:absolute;bottom:30px;width:2px;height:100px;transform:translateX(-1px);transition:left .6s}
+.axis .mark span{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:var(--f-mono);font-size:.7rem;white-space:nowrap;font-weight:600}
+.axis .avg{background:var(--ink)} .axis .avg span{color:var(--ink)}
+.axis .tgt{background:var(--eq)} .axis .tgt span{color:var(--eq);top:-34px}
+.bc-row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.bc-row input[type=number]{width:110px;font:600 1.4rem var(--f-display);padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.ult{display:grid;gap:16px}
+.ult-scale{position:relative;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--surface-2),var(--line));margin:16px 0 8px}
+.ult-scale i{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);border:3px solid var(--surface)}
+.ult-scale-l{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+
+/* canvas */
+.cv{width:100%;aspect-ratio:2.1;max-width:100%;display:block;border-radius:12px;background:var(--surface-2)}
+.controls{display:grid;gap:16px}
+.readout{display:flex;flex-wrap:wrap;gap:24px;margin-top:14px}
+.readout div small{display:block;font-size:.78rem;color:var(--muted)}
+.readout div b{font-family:var(--f-display);font-size:1.7rem;font-variant-numeric:tabular-nums}
+.ess{display:grid;gap:8px;font-family:var(--f-mono);font-size:.9rem}
+.ess div{padding:10px 14px;border-radius:10px;background:var(--surface-2);overflow-x:auto;white-space:nowrap}
+
+/* mecanismos */
+.flow{display:grid;gap:12px}
+.flow-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center}
+.flow-row > span{font-size:.85rem;color:var(--muted)}
+.flow-line{display:flex;align-items:center;gap:10px;font-weight:600;flex-wrap:wrap}
+.flow-line em{font-style:normal;padding:8px 14px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}
+.flow-line .arr{width:46px;height:2px;background:var(--ink);position:relative;overflow:visible}
+.flow-line .arr::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid var(--ink);border-right:0}
+.flow-line .arr::before{content:"";position:absolute;top:-2px;left:0;width:6px;height:6px;border-radius:50%;background:var(--eq);animation:travel 2.2s linear infinite}
+@keyframes travel{from{left:0}to{left:40px}}
+.gs svg{width:100%;height:auto;display:block}
+.gs-log{margin-top:12px;min-height:3em;font-size:.95rem;color:var(--muted)}
+.gs-log b{color:var(--ink)}
+
+/* subastas */
+.auc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+.auc{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--surface-2);min-width:0}
+.auc h4{font-size:1.15rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.auc dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:12px 0;font-size:.9rem}
+.auc dt{color:var(--muted)} .auc dd{margin:0;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.auc dd.u{font-family:var(--f-display);font-weight:700;font-size:1.4rem;color:var(--a)}
+.auc svg{width:100%;height:auto;display:block}
+.verdict{font-size:.82rem;font-weight:600;padding:3px 10px;border-radius:999px}
+.verdict.ok{background:var(--b-soft);color:var(--b)} .verdict.no{background:var(--a-soft);color:var(--a)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2)}
+td:first-child{font-weight:600}
+
+/* financiamiento cuadrático */
+.qf-out{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.qf-out div{background:var(--surface-2);border-radius:12px;padding:14px;min-width:0}
+.qf-out small{display:block;font-size:.78rem;color:var(--muted)}
+.qf-out b{font-family:var(--f-display);font-size:clamp(1.15rem,2.4vw,1.6rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.logbars{display:grid;gap:10px}
+.logbar{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:center;font-size:.85rem}
+.logbar .track{height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.logbar .fill{height:100%;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.logticks{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px}
+.logticks div{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.vuln{border-left:3px solid var(--a);padding:2px 0 2px 16px}
+.vuln h4{font-size:1.05rem;margin-bottom:4px}
+.vuln p{color:var(--muted);font-size:.94rem}
+
+/* braess */
+.braess svg{width:100%;height:auto;display:block}
+.braess .edge{stroke:var(--line);stroke-width:6;fill:none;stroke-linecap:round;transition:stroke .3s,opacity .4s}
+.braess .edge.hot{stroke:var(--a);opacity:.55}
+.braess .edge.cool{stroke:var(--b);opacity:.45}
+.braess .short{stroke-dasharray:10 8}
+.braess .node circle{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.braess .node text{font-family:var(--f-mono);font-size:13px;fill:var(--ink);font-weight:600;text-anchor:middle;dominant-baseline:central}
+.braess .elab{font-family:var(--f-mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+.braess .car{fill:var(--ink)}
+
+/* resumen */
+.flip-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.flip{perspective:900px;background:none;border:0;padding:0;cursor:pointer;text-align:left;min-height:170px}
+.flip-in{position:relative;width:100%;height:100%;min-height:170px;transition:transform .6s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d}
+.flip.on .flip-in{transform:rotateY(180deg)}
+.flip-f,.flip-b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line)}
+.flip-f{background:var(--surface)}
+.flip-f h4{font-size:1.08rem;font-weight:700}
+.flip-f small{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.flip-b{background:var(--ink);color:var(--bg);transform:rotateY(180deg);font-size:.9rem;line-height:1.45;border-color:var(--ink)}
+.flip-b small{font-family:var(--f-mono);font-size:.7rem;opacity:.7}
+
+footer{border-top:1px solid var(--line);padding-block:40px;color:var(--muted);font-size:.88rem}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* aparición al hacer scroll (solo para lo que está fuera de la primera pantalla) */
+.rv{transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.wait{opacity:0;transform:translateY(22px)}
+
+@media (max-width:900px){
+  .hero-grid,.game,.split{grid-template-columns:minmax(0,1fr)}
+  .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flip-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stores{grid-template-columns:repeat(10,minmax(0,1fr))}
+}
+@media (max-width:600px){
+  body{font-size:16px}
+  .g2,.g3,.g4,.auc-grid,.qf-out{grid-template-columns:minmax(0,1fr)}
+  .flip-grid{grid-template-columns:minmax(0,1fr)}
+  .ch-head{grid-template-columns:minmax(0,1fr);gap:4px}
+  .chapter{padding-block:60px}
+  .lab{padding:18px}
+  .tl-card{grid-template-columns:minmax(0,1fr)}
+  .flow-row{grid-template-columns:minmax(0,1fr);gap:6px}
+  .hist{grid-template-columns:52px repeat(10,minmax(0,1fr));gap:3px}
+  .bar-row{grid-template-columns:96px minmax(0,1fr) 46px}
+  .logbar,.logticks{grid-template-columns:80px minmax(0,1fr)}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#inicio" aria-label="Inicio"><i><b></b><b></b><b></b><b></b></i><span>Teoría de Juegos</span></a>
+    <nav class="nav" id="nav" aria-label="Capítulos">
+      <a href="#inicio">Inicio</a><a href="#que-es">Qué es</a><a href="#c1">01</a><a href="#c2">02</a><a href="#c3">03</a><a href="#c4">04</a><a href="#c5">05</a><a href="#c6">06</a><a href="#c7">07</a><a href="#c8">08</a><a href="#c9">09</a><a href="#c10">10</a><a href="#resumen">Resumen</a>
+    </nav>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero" id="inicio">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Investigación de Operaciones · Exposición</p>
+      <h1>Teoría de <span>Juegos</span></h1>
+      <p class="hero-sub">Fundamentos matemáticos, evolución epistémica y aplicaciones contemporáneas</p>
+      <p class="lede">El estudio matemático de las interacciones estratégicas entre agentes racionales: lo que obtengo depende de lo que yo elijo y de lo que eligen los demás.</p>
+      <div class="cta">
+        <a class="btn btn-a" href="#jugar">Jugar el dilema</a>
+        <a class="btn" href="#que-es">Empezar el recorrido</a>
+      </div>
+      <p class="kbd-hint">Para exponer: <kbd>←</kbd> <kbd>→</kbd> pasan de capítulo.</p>
+    </div>
+
+    <figure class="matrix-card">
+      <div class="mx-top">
+        <span class="eyebrow">Dilema del Prisionero · toca una casilla</span>
+        <button class="btn btn-sm" id="mx-run" type="button">Buscar el equilibrio</button>
+      </div>
+      <div class="mx" id="hero-mx" style="--cols:2"></div>
+      <p class="mx-explain" id="mx-explain">Dos sospechosos deciden por separado si <b>cooperan</b> entre sí (callan) o <b>desertan</b> (delatan). En cada casilla, el número de abajo es el pago de A y el de arriba el de B.</p>
+      <div class="legend">
+        <span style="--c:var(--a)">Jugador A (filas)</span>
+        <span style="--c:var(--b)">Jugador B (columnas)</span>
+        <span style="--c:var(--eq)">Equilibrio de Nash</span>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<!-- ================= QUÉ ES ================= -->
+<section class="chapter" id="que-es">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">00</span>
+      <div>
+        <p class="eyebrow">Antes de empezar</p>
+        <h2>Un juego tiene cuatro piezas</h2>
+        <p class="lede">Las decisiones son interdependientes: el resultado depende de las preferencias, expresadas como funciones de utilidad, de todos los involucrados.</p>
+      </div>
+    </div>
+    <div class="grid g4">
+      <div class="card piece rv">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle class="fa" cx="13" cy="13" r="5"/><path class="fa" d="M4 32c0-6 4-10 9-10s9 4 9 10"/><circle class="fb" cx="28" cy="15" r="4.5"/><path class="fb" d="M21 33c1-5 3.5-8 7-8s7 3 8 8"/></svg>
+        <h3>Jugadores</h3><p>Agentes racionales que toman decisiones: personas, empresas, países, células o algoritmos.</p>
+      </div>
+      <div class="card piece rv">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 34V20"/><path class="fa" d="M20 20 9 8"/><path class="fb" d="M20 20 31 8"/><path class="fa" d="M9 8h5M9 8v5"/><path class="fb" d="M31 8h-5M31 8v5"/></svg>
+        <h3>Estrategias</h3><p>Las acciones disponibles para cada jugador, o una mezcla probabilística de ellas.</p>
+      </div>
+      <div class="card piece rv">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="5" width="30" height="30" rx="4"/><path d="M5 35 35 5"/><path class="fa" d="M10 24v6M10 24h3"/><path class="fb" d="M27 10h4v6"/></svg>
+        <h3>Pagos</h3><p>Lo que cada uno obtiene en cada resultado, medido con su función de utilidad.</p>
+      </div>
+      <div class="card piece rv">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path class="fa" d="M8 14c6-8 18-8 24 0"/><path class="fa" d="M28 9l4 5-6 1"/><path class="fb" d="M32 26c-6 8-18 8-24 0"/><path class="fb" d="M12 31l-4-5 6-1"/></svg>
+        <h3>Interdependencia</h3><p>Mi mejor jugada depende de lo que espero que hagas tú, y la tuya de lo que esperas de mí.</p>
+      </div>
+    </div>
+    <div class="transversal rv">
+      <span class="eyebrow">Hoy es un lenguaje común a</span>
+      <div class="chips"><span class="chip">Economía</span><span class="chip">Ciencias sociales</span><span class="chip">Biología evolutiva</span><span class="chip">Informática</span><span class="chip">Física cuántica</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1. HISTORIA ================= -->
+<section class="chapter" id="c1">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">01</span>
+      <div>
+        <p class="eyebrow">Capítulo 1</p>
+        <h2>Fundamentos históricos</h2>
+        <p class="lede">Tres aportes fundaron la disciplina: el conflicto formalizado, el equilibrio que lleva el nombre de Nash y una regla justa para repartir lo que se gana en equipo.</p>
+      </div>
+    </div>
+    <div class="grid g3">
+      <article class="card founder rv">
+        <div class="yr">1944</div>
+        <h3>von Neumann y Morgenstern</h3>
+        <p><em>Theory of Games and Economic Behavior</em>. Primera formalización general del conflicto y la cooperación, centrada en juegos de <b>suma cero</b>: lo que gana uno lo pierde el otro.</p>
+      </article>
+      <article class="card founder rv">
+        <div class="yr ceq">1950s</div>
+        <h3>John Nash</h3>
+        <p>Lleva el análisis a juegos de <b>suma no cero</b> y demuestra que todo juego finito tiene al menos un equilibrio en estrategias mixtas: nadie gana desviándose solo, dadas las estrategias de los demás.</p>
+      </article>
+      <article class="card founder rv">
+        <div class="yr">1953</div>
+        <h3>Lloyd Shapley</h3>
+        <p>El <b>valor de Shapley</b> reparte el excedente de un juego cooperativo según la contribución marginal de cada jugador, promediada sobre todas las coaliciones posibles.</p>
+        <div class="chips" style="margin-top:14px"><span class="chip">Eficiencia</span><span class="chip">Simetría</span><span class="chip">Jugador nulo</span><span class="chip">Aditividad</span></div>
+      </article>
+    </div>
+
+    <div class="timeline lab rv">
+      <div class="lab-head">
+        <div><h3>Línea de tiempo del tema</h3><p>Cada punto es un hito de esta exposición. Selecciona uno o recórrelos con las flechas.</p></div>
+        <span class="pill">Interactivo</span>
+      </div>
+      <div class="tl-track" id="tl-track" role="tablist" aria-label="Hitos"></div>
+      <div class="tl-card" id="tl-card" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. EPISTÉMICA ================= -->
+<section class="chapter" id="c2">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">02</span>
+      <div>
+        <p class="eyebrow">Capítulo 2</p>
+        <h2>Fundamentos epistémicos y conocimiento común</h2>
+        <p class="lede">La teoría epistémica vuelve explícito lo que la teoría clásica daba por sentado: qué sabe y qué cree cada jugador, incluida la información de orden superior, es decir, lo que otros piensan que uno piensa.</p>
+      </div>
+    </div>
+    <div class="split">
+      <div class="rings rv" aria-label="Niveles de creencias anidados">
+        <div class="ring">Yo sé que tú sabes que yo sé que…</div>
+        <div class="ring">Tú sabes que yo sé</div>
+        <div class="ring">Yo sé</div>
+        <div class="ring">Conocimiento común</div>
+      </div>
+      <div class="stack">
+        <article class="card rv"><span class="tag">Harsanyi · 1967</span><h3>Tipos</h3><p>La incertidumbre sobre pagos, preferencias u opciones de los otros se modela con una distribución de probabilidad sobre "tipos" que todos conocen. Un juego de información incompleta pasa a ser de información imperfecta pero completa.</p></article>
+        <article class="card rv"><span class="tag">Mertens y Zamir · 1985</span><h3>Espacio de tipos universal</h3><p>Una jerarquía infinita de creencias de orden superior que contiene todos los tipos posibles. Permite modelar cualquier juego bayesiano sin perder generalidad.</p></article>
+        <article class="card rv"><span class="tag">Aumann · 1976</span><h3>Teorema del Acuerdo</h3><p>Dos agentes bayesianos con un <em>prior</em> común, cuyas creencias posteriores son conocimiento común, no pueden "acordar estar en desacuerdo".</p>
+          <div class="formula" style="margin-top:14px">q<sub>1</sub>, q<sub>2</sub> de conocimiento común &nbsp;⇒&nbsp; q<sub>1</sub> = q<sub>2</sub></div>
+          <p class="note" style="margin-top:10px">Variantes posteriores relajan el supuesto: creencias comunes con margen de error (Monderer y Samet) y múltiples <em>priors</em> bajo ambigüedad.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. REPETIDOS ================= -->
+<section class="chapter" id="c3">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">03</span>
+      <div>
+        <p class="eyebrow">Capítulo 3</p>
+        <h2>Juegos repetidos, negociación y secuencialidad</h2>
+        <p class="lede">Cuando el juego se repite, el futuro disciplina al presente: la amenaza de castigo puede sostener una cooperación que en una sola ronda sería imposible.</p>
+      </div>
+    </div>
+
+    <div class="lab rv" id="jugar">
+      <div class="lab-head">
+        <div><h3>Juega: el dilema repetido</h3><p>Diez rondas contra un rival con una estrategia fija. Tú eres A. ¿Logras más cooperando o traicionando?</p></div>
+        <span class="pill">Juego</span>
+      </div>
+      <div class="game">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px">Rival</p>
+          <div class="opp" id="opp"></div>
+          <div class="scores">
+            <div class="score you"><small>Tú (A)</small><b id="sc-y">0</b></div>
+            <div class="score rival"><small id="sc-r-name">Rival (B)</small><b id="sc-r">0</b></div>
+          </div>
+          <div class="hist" id="hist"></div>
+          <div class="moves">
+            <button class="btn btn-b" id="mv-c" type="button">Cooperar</button>
+            <button class="btn btn-ink" id="mv-d" type="button">Desertar</button>
+          </div>
+          <div class="game-msg" id="game-msg" aria-live="polite">Elige tu primera jugada.</div>
+        </div>
+        <div class="stack" style="gap:20px">
+          <div>
+            <p class="eyebrow">Pagos por ronda (tú, rival)</p>
+            <div class="mini-mx" id="mini-mx">
+              <div class="h"></div><div class="h">Rival C</div><div class="h">Rival D</div>
+              <div class="h">Tú C</div><div data-k="CC">3, 3</div><div data-k="CD">0, 5</div>
+              <div class="h">Tú D</div><div data-k="DC">5, 0</div><div data-k="DD">1, 1</div>
+            </div>
+          </div>
+          <div class="card" style="background:var(--surface-2)">
+            <span class="tag">Fudenberg y Maskin · 1986</span>
+            <h3>Teorema Popular (Folk Theorem)</h3>
+            <p>En juegos repetidos infinitamente con descuento, cualquier pago factible e individualmente racional que mejore el minimax se sostiene como equilibrio perfecto en subjuegos si los jugadores son pacientes (δ → 1). La amenaza creíble de castigo supera cualquier ganancia momentánea por desviarse.</p>
+          </div>
+          <div>
+            <button class="btn btn-sm" id="tour-run" type="button">Ver el torneo de Axelrod (200 rondas)</button>
+            <div class="bars" id="tour"></div>
+            <p class="note" id="tour-note" style="margin-top:10px"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:28px">
+      <div class="lab rv">
+        <div class="lab-head"><div><h3>Negociación de Rubinstein</h3><p>Dos jugadores alternan ofertas para repartir un excedente. Con impaciencia, hay un único equilibrio perfecto y el acuerdo llega en el primer periodo.</p></div><span class="pill">1982</span></div>
+        <div class="controls">
+          <div class="field"><label for="dA">Paciencia de A (δ<sub>A</sub>) <output id="dA-o">0,90</output></label><input type="range" id="dA" min="0.1" max="0.98" step="0.01" value="0.9"></div>
+          <div class="field"><label for="dB">Paciencia de B (δ<sub>B</sub>) <output id="dB-o">0,90</output></label><input type="range" id="dB" min="0.1" max="0.98" step="0.01" value="0.9"></div>
+        </div>
+        <div class="pie"><div class="pa" id="pie-a">A 53%</div><div class="pb" id="pie-b">47% B</div></div>
+        <p class="note" id="rub-note"></p>
+        <div class="formula" style="margin-top:12px">parte de A (propone primero) = (1 − δ<sub>B</sub>) / (1 − δ<sub>A</sub>δ<sub>B</sub>)</div>
+      </div>
+
+      <div class="lab rv">
+        <div class="lab-head"><div><h3>Paradoja de la cadena de tiendas</h3><p>Un monopolista enfrenta a 20 competidores que entran uno a uno. ¿Qué dice la lógica y qué dice la intuición? <span class="mono">(Selten)</span></p></div></div>
+        <div class="seg" role="group" aria-label="Modo">
+          <button type="button" id="cs-back" aria-pressed="false">Inducción hacia atrás</button>
+          <button type="button" id="cs-rep" aria-pressed="false">Reputación</button>
+        </div>
+        <div class="stores" id="stores"></div>
+        <div class="legend"><span style="--c:var(--b)">Entra, el monopolio acomoda</span><span style="--c:var(--a)">El monopolio pelea</span><span style="--c:var(--line)">No entra</span></div>
+        <p class="note" id="cs-note" style="margin-top:12px">Elige un modo de razonar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. CONDUCTUAL ================= -->
+<section class="chapter" id="c4">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">04</span>
+      <div>
+        <p class="eyebrow">Capítulo 4</p>
+        <h2>Teoría de juegos conductual</h2>
+        <p class="lede">Reemplaza al <em>Homo economicus</em> por modelos empíricos con límites cognitivos, heurísticas y sesgos. Herbert Simon lo resumió con la racionalidad acotada: somos <em>satisficers</em>, no maximizadores perfectos.</p>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-bottom:28px">
+      <article class="card rv"><span class="tag">Jerarquía cognitiva</span><h3>Level-k</h3><p>Los jugadores razonan solo de uno a tres pasos por delante de un nivel base ingenuo (Level-0).</p></article>
+      <article class="card rv"><span class="tag">Respuesta suavizada</span><h3>Equilibrio de Respuesta Cuantal (QRE)</h3><p>Se evalúan utilidades esperadas, pero con errores; los errores costosos son menos frecuentes que los baratos.</p></article>
+    </div>
+
+    <div class="lab rv">
+      <div class="lab-head">
+        <div><h3>Concurso de belleza p = 2/3</h3><p>Escribe un número de 0 a 100. Gana quien más se acerque a los 2/3 del promedio de todos. <span class="mono">(Nagel, 1995)</span></p></div>
+        <span class="pill">Juega con la clase</span>
+      </div>
+      <div class="bc-row">
+        <div class="field"><label for="bc-guess">Tu número</label><input type="number" id="bc-guess" min="0" max="100" value="33"></div>
+        <button class="btn btn-a" id="bc-sim" type="button">Simular 30 compañeros</button>
+      </div>
+      <div class="axis" id="bc-axis"><div class="line"></div></div>
+      <p class="game-msg" id="bc-msg" aria-live="polite">Cada línea gris es un nivel de razonamiento. El único equilibrio de Nash, por dominancia iterada, es 0.</p>
+    </div>
+
+    <div class="lab rv" style="margin-top:28px">
+      <div class="lab-head"><div><h3>Juego del Ultimátum en 15 sociedades</h3><p>Uno propone cómo dividir una suma; el otro acepta o rechaza, y si rechaza nadie recibe nada. <span class="mono">(Henrich et al., 2001)</span></p></div></div>
+      <div class="grid g2">
+        <div class="ult">
+          <h4 style="font-size:1.15rem">Machiguenga <span class="note">· Perú</span></h4>
+          <p class="note">Poco integrados al mercado. Ofrecieron poco y casi no rechazaron: cerca del equilibrio de Nash.</p>
+          <div class="ult-scale"><i style="left:12%;background:var(--b)"></i></div>
+          <div class="ult-scale-l"><span>nada</span><span>la mitad</span><span>todo</span></div>
+        </div>
+        <div class="ult">
+          <h4 style="font-size:1.15rem">Lamalera <span class="note">· Indonesia</span></h4>
+          <p class="note">Cazadores de ballenas que dependen de la cooperación. Ofertas hiperequitativas, a menudo rechazadas para evitar deudas sociales.</p>
+          <div class="ult-scale"><i style="left:60%;background:var(--a)"></i></div>
+          <div class="ult-scale-l"><span>nada</span><span>la mitad</span><span>todo</span></div>
+        </div>
+      </div>
+      <p style="margin-top:20px;font-weight:600">Las preferencias sociales y la noción de justicia no son fijas: coevolucionan con la cultura y el entorno.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. EVOLUTIVA ================= -->
+<section class="chapter" id="c5">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">05</span>
+      <div>
+        <p class="eyebrow">Capítulo 5</p>
+        <h2>Teoría de juegos evolutiva</h2>
+        <p class="lede">Maynard Smith y Price (<em>Nature</em>, 1973): el equilibrio ya no exige razonar. La selección natural reemplaza la elección deliberada; los jugadores son organismos con estrategias programadas y el pago es su aptitud reproductiva.</p>
+      </div>
+    </div>
+
+    <div class="lab rv">
+      <div class="lab-head">
+        <div><h3>Halcón y Paloma</h3><p>Los halcones pelean siempre; las palomas amenazan y ceden. V es el valor del recurso y C el costo de una pelea. Mueve los controles y mira cómo evoluciona la población.</p></div>
+        <span class="pill">Simulación</span>
+      </div>
+      <div class="split">
+        <div class="controls">
+          <div class="field"><label for="hd-v">Valor del recurso V <output id="hd-v-o">4</output></label><input type="range" id="hd-v" min="1" max="12" step="1" value="4"></div>
+          <div class="field"><label for="hd-c">Costo de pelear C <output id="hd-c-o">10</output></label><input type="range" id="hd-c" min="1" max="20" step="1" value="10"></div>
+          <div class="field"><label for="hd-x">Halcones al inicio <output id="hd-x-o">5%</output></label><input type="range" id="hd-x" min="1" max="99" step="1" value="5"></div>
+          <div class="readout"><div><small>Halcones al final</small><b id="hd-final" class="ca">40%</b></div><div><small>ESS predicha</small><b id="hd-ess" class="ceq">V/C = 40%</b></div></div>
+          <p class="note" id="hd-note"></p>
+        </div>
+        <div>
+          <canvas class="cv" id="hd-cv" aria-label="Proporción de halcones en el tiempo"></canvas>
+          <div class="legend" style="margin-top:10px"><span style="--c:var(--a)">Halcones</span><span style="--c:var(--b)">Palomas</span><span style="--c:var(--eq)">Estrategia evolutivamente estable</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:28px">
+      <article class="card rv">
+        <span class="tag">Estrategia Evolutivamente Estable (ESS)</span>
+        <h3>Resiste a cualquier mutante</h3>
+        <p>Adoptada por toda la población, ningún mutante en proporción marginal puede invadirla. σ es ESS frente al mutante μ si:</p>
+        <div class="ess" style="margin-top:12px">
+          <div>1. u(σ,σ) &gt; u(μ,σ)</div>
+          <div>2. o bien u(σ,σ) = u(μ,σ) y u(σ,μ) &gt; u(μ,μ)</div>
+        </div>
+      </article>
+      <article class="card rv">
+        <span class="tag">Dinámica poblacional</span>
+        <h3>Ecuación del replicador</h3>
+        <p>Una estrategia crece en proporción a cuánto supera su aptitud al promedio. Toda ESS es un atractor estable, pero no todo atractor es ESS.</p>
+        <div class="formula" style="margin-top:12px">dx<sub>i</sub>/dt = x<sub>i</sub> · [ f<sub>i</sub>(x) − f̄(x) ]</div>
+        <div class="chips" style="margin-top:14px"><span class="chip">Conflictos ritualizados</span><span class="chip">Invasiones biológicas</span><span class="chip">Axelrod: Tit-for-Tat y altruismo recíproco</span></div>
+      </article>
+    </div>
+
+    <div class="lab rv" style="margin-top:28px">
+      <div class="lab-head">
+        <div><h3>Oncología evolutiva: terapia adaptativa</h3><p>Un tumor es un ecosistema: células <span class="cb">sensibles</span> y <span class="ca">resistentes</span> compiten por espacio, oxígeno y vascularización. El oncólogo es el líder de un juego de Stackelberg y el tumor, el seguidor.</p></div>
+        <div class="seg" role="group" aria-label="Tratamiento">
+          <button type="button" id="on-mtd" aria-pressed="true">Dosis máxima (MTD)</button>
+          <button type="button" id="on-ad" aria-pressed="false">Terapia adaptativa</button>
+        </div>
+      </div>
+      <canvas class="cv" id="on-cv" style="aspect-ratio:2.6" aria-label="Células sensibles y resistentes en el tiempo"></canvas>
+      <div class="legend" style="margin-top:10px"><span style="--c:var(--b)">Células sensibles</span><span style="--c:var(--a)">Células resistentes</span><span style="--c:var(--eq)">Fármaco activo</span></div>
+      <div class="split" style="margin-top:18px">
+        <div class="readout" style="margin-top:0"><div><small>Los resistentes dominan</small><b id="on-prog">día 220</b></div></div>
+        <p class="note" id="on-note"></p>
+      </div>
+      <p class="note" style="margin-top:12px">Modelo ilustrativo de competencia (Lotka-Volterra), unidades arbitrarias. Evidencia real: ensayos de fase 2 en cáncer de próstata metastásico resistente a la castración (abiraterona, dosis según el PSA) prolongaron el tiempo hasta la progresión con menor toxicidad y costo. El aprendizaje por refuerzo profundo busca dosis personalizadas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 6. MECANISMOS ================= -->
+<section class="chapter" id="c6">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">06</span>
+      <div>
+        <p class="eyebrow">Capítulo 6</p>
+        <h2>Diseño de mecanismos y mercados de emparejamiento</h2>
+        <p class="lede">Ingeniería inversa: en lugar de predecir el resultado de unas reglas, se diseñan las reglas para obtener un resultado deseable, aun con información asimétrica y agentes egoístas.</p>
+      </div>
+    </div>
+
+    <div class="card rv flow" style="margin-bottom:28px">
+      <div class="flow-row"><span>Teoría de juegos</span><div class="flow-line"><em>Reglas</em><i class="arr"></i><em>Resultado</em></div></div>
+      <div class="flow-row"><span>Diseño de mecanismos</span><div class="flow-line"><em class="ceq" style="border-color:var(--eq)">Resultado deseado</em><i class="arr"></i><em>Reglas</em></div></div>
+    </div>
+
+    <div class="split">
+      <div class="lab gs rv">
+        <div class="lab-head">
+          <div><h3>Aceptación diferida</h3><p>Gale y Shapley (1962). Los estudiantes proponen; cada hospital retiene al mejor candidato hasta ahora y rechaza al resto.</p></div>
+        </div>
+        <svg id="gs-svg" viewBox="0 0 440 250" role="img" aria-label="Emparejamiento entre estudiantes y hospitales"></svg>
+        <p class="gs-log" id="gs-log" aria-live="polite">Pulsa “Siguiente propuesta”.</p>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-a btn-sm" id="gs-next" type="button">Siguiente propuesta</button>
+          <button class="btn btn-sm" id="gs-reset" type="button">Reiniciar</button>
+        </div>
+      </div>
+      <div class="stack">
+        <article class="card rv"><span class="tag">Alvin Roth · NRMP, EE. UU.</span><h3>Médicos residentes</h3><p>El mercado sufría <em>unraveling</em> (contrataciones cada vez más adelantadas) y volatilidad, en parte por parejas que buscaban la misma ciudad. Roth rediseñó el algoritmo con propuestas del lado estudiantil y restauró la estabilidad.</p></article>
+        <article class="card rv">
+          <span class="tag">Alvin Roth · Top Trading Cycles (Shapley y Scarf)</span>
+          <h3>Intercambio pareado de riñones</h3>
+          <svg viewBox="0 0 300 120" style="width:100%;height:auto;margin:6px 0 10px" aria-label="Ciclo de intercambio de riñones">
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--eq)"/></marker></defs>
+            <g font-family="var(--f-mono)" font-size="11" text-anchor="middle">
+              <rect x="20" y="20" width="70" height="34" rx="8" fill="var(--b-soft)" stroke="var(--b)"/><text x="55" y="41" fill="var(--ink)">Par 1</text>
+              <rect x="115" y="70" width="70" height="34" rx="8" fill="var(--b-soft)" stroke="var(--b)"/><text x="150" y="91" fill="var(--ink)">Par 2</text>
+              <rect x="210" y="20" width="70" height="34" rx="8" fill="var(--b-soft)" stroke="var(--b)"/><text x="245" y="41" fill="var(--ink)">Par 3</text>
+              <path d="M70 56 Q 90 90 112 88" fill="none" stroke="var(--eq)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="1s" repeatCount="indefinite"/></path>
+              <path d="M188 88 Q 212 90 230 57" fill="none" stroke="var(--eq)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="1s" repeatCount="indefinite"/></path>
+              <path d="M210 30 Q 150 2 92 30" fill="none" stroke="var(--eq)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="1s" repeatCount="indefinite"/></path>
+            </g>
+          </svg>
+          <p>Pares paciente-donante incompatibles intercambian donantes en ciclos. Con donantes altruistas surgen cadenas no simultáneas que ampliaron los trasplantes posibles. Roth y Shapley: <b>Nobel de Economía 2012</b>.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7. SUBASTAS ================= -->
+<section class="chapter" id="c7">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">07</span>
+      <div>
+        <p class="eyebrow">Capítulo 7</p>
+        <h2>Subastas digitales: VCG y GSP</h2>
+        <p class="lede">El diseño de mecanismos sostiene la publicidad online. Cada búsqueda es una subasta por los espacios patrocinados; la regla de pago cambia la mejor forma de pujar.</p>
+      </div>
+    </div>
+
+    <div class="lab rv">
+      <div class="lab-head">
+        <div><h3>¿Te conviene pujar tu valor real?</h3><p>Eres el anunciante A y cada clic vale <b>$10</b> para ti. B puja $6 y C puja $4. Hay dos espacios: el primero recibe 100 clics y el segundo 80.</p></div>
+        <span class="pill">Experimento</span>
+      </div>
+      <div class="field" style="max-width:520px"><label for="bid">Tu puja por clic <output id="bid-o">$10,0</output></label><input type="range" id="bid" min="0" max="12" step="0.5" value="10"></div>
+      <div class="auc-grid">
+        <div class="auc" id="auc-gsp"></div>
+        <div class="auc" id="auc-vcg"></div>
+      </div>
+      <p class="game-msg" id="auc-msg"></p>
+    </div>
+
+    <div class="table-wrap rv" style="margin-top:28px">
+      <table>
+        <thead><tr><th>Característica</th><th>Vickrey-Clarke-Groves (VCG)</th><th>Generalized Second Price (GSP)</th></tr></thead>
+        <tbody>
+          <tr><td>Plataformas</td><td>Facebook (Meta), Google (red contextual)</td><td>Google Search, Bing, Yahoo!, Taobao</td></tr>
+          <tr><td>Asignación</td><td>Maximiza el bienestar social: ordena de mayor a menor valor.</td><td>El espacio k va al k-ésimo postor más alto.</td></tr>
+          <tr><td>Pago</td><td>Cada postor paga la externalidad que impone a los demás al desplazarlos.</td><td>Paga por clic la puja del postor siguiente (rango k+1).</td></tr>
+          <tr><td>Estrategia</td><td>Pujar sinceramente es estrategia dominante.</td><td>No lo es: hay <em>bid shading</em> y riesgo de colusión de agencias.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note rv" style="margin-top:16px;max-width:80ch">Edelman, Ostrovsky y Schwarz (2007) modelaron GSP como juego estático de información completa: tiene varios equilibrios ineficientes, pero el Equilibrio Libre de Envidia Local (LEFE) de menor ingreso reproduce exactamente las asignaciones e ingresos de VCG. En mercados saturados de agencias, la evidencia reciente sugiere que VCG supera a GSP en ingresos y eficiencia.</p>
+  </div>
+</section>
+
+<!-- ================= 8. QF ================= -->
+<section class="chapter" id="c8">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">08</span>
+      <div>
+        <p class="eyebrow">Capítulo 8</p>
+        <h2>Financiamiento cuadrático, blockchain y bienes públicos</h2>
+        <p class="lede">Buterin, Hitzig y Weyl (2018) buscaban financiar bienes públicos sin caer en "un dólar, un voto" (problema del polizón) ni en "una persona, un voto" (que ignora minorías intensas). Un fondo externo subsidia según cuántas personas aportan, no cuánto.</p>
+      </div>
+    </div>
+
+    <div class="lab rv">
+      <div class="lab-head">
+        <div><h3>Calculadora de financiamiento cuadrático</h3><p>Prueba los tres escenarios y luego mueve los controles.</p></div>
+        <div class="presets">
+          <button class="btn btn-sm" type="button" data-qf="1,10000">Un multimillonario</button>
+          <button class="btn btn-sm" type="button" data-qf="10000,1">10.000 personas</button>
+          <button class="btn btn-sm" type="button" data-qf="100,100">Ataque Sybil</button>
+        </div>
+      </div>
+      <div class="split">
+        <div class="controls">
+          <div class="field"><label for="qf-n">Número de aportantes N <output id="qf-n-o">1</output></label><input type="range" id="qf-n" min="0" max="4" step="0.01" value="0"></div>
+          <div class="field"><label for="qf-c">Aporte de cada uno c <output id="qf-c-o">$10.000</output></label><input type="range" id="qf-c" min="0" max="4" step="0.01" value="4"></div>
+          <div class="formula">Fondos = ( Σ √c<sub>i</sub> )²</div>
+          <p class="note" id="qf-note"></p>
+        </div>
+        <div>
+          <div class="qf-out">
+            <div><small>Total aportado</small><b id="qf-tot">$10.000</b></div>
+            <div><small>Fondos teóricos</small><b id="qf-fund" class="ceq">$10.000</b></div>
+            <div><small>Multiplicador</small><b id="qf-mult">×1</b></div>
+          </div>
+          <div class="logbars">
+            <div class="logbar"><span>Aportado</span><div class="track"><div class="fill" id="qf-b1" style="background:var(--b)"></div></div></div>
+            <div class="logbar"><span>Fondos QF</span><div class="track"><div class="fill" id="qf-b2" style="background:var(--eq)"></div></div></div>
+            <div class="logticks"><span></span><div><span>$1</span><span>$1 mil</span><span>$1 M</span><span>$1.000 M</span><span>$1 B</span></div></div>
+          </div>
+          <p class="note" style="margin-top:8px">Escala logarítmica. En la práctica los fondos se limitan al tamaño del fondo de contrapartida.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:28px">
+      <div class="vuln rv"><h4>Ataque Sybil</h4><p>Como QF premia el número de cuentas, alguien puede dividir su capital en miles de identidades falsas para captar el fondo.</p></div>
+      <div class="vuln rv"><h4>Colusión</h4><p>Cuentas que se coordinan para inflar artificialmente los aportes, como se ha visto en Gitcoin Grants.</p></div>
+      <div class="vuln rv"><h4>MEV</h4><p>Valor que proponentes de bloques y <em>searchers</em> extraen reordenando transacciones (<em>frontrunning</em>, Gas Wars). Motivó subastas fuera de la cadena como Flashbots.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9. COMPLEJIDAD ================= -->
+<section class="chapter" id="c9">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">09</span>
+      <div>
+        <p class="eyebrow">Capítulo 9</p>
+        <h2>Complejidad computacional y aprendizaje algorítmico</h2>
+        <p class="lede">Saber que un equilibrio existe no significa poder calcularlo. Y cuando cada agente optimiza por su cuenta, el sistema completo puede salir perdiendo.</p>
+      </div>
+    </div>
+
+    <div class="lab braess rv">
+      <div class="lab-head">
+        <div><h3>Paradoja de Braess</h3><p>4.000 conductores van de Inicio a Fin. Las vías anchas tardan 45 min; las angostas tardan T/100 min, donde T es cuántos autos las usan. ¿Qué pasa si se abre un atajo gratis de A a B?</p></div>
+        <div class="seg" role="group" aria-label="Red">
+          <button type="button" id="br-off" aria-pressed="true">Sin atajo</button>
+          <button type="button" id="br-on" aria-pressed="false">Con atajo</button>
+        </div>
+      </div>
+      <svg id="br-svg" viewBox="0 0 560 270" role="img" aria-label="Red de tráfico"></svg>
+      <div class="readout">
+        <div><small>Tiempo de cada conductor</small><b id="br-time">65 min</b></div>
+        <div><small>Precio de la anarquía en este caso</small><b id="br-poa">1,00</b></div>
+      </div>
+      <p class="note" id="br-note" style="margin-top:8px"></p>
+    </div>
+
+    <div class="grid g2" style="margin-top:28px">
+      <article class="card rv">
+        <span class="tag">Koutsoupias y Papadimitriou 1999 · Roughgarden y Tardos 2002</span>
+        <h3>Precio de la Anarquía</h3>
+        <div class="formula" style="margin:10px 0 12px">PoA = costo del peor Nash / costo óptimo</div>
+        <p>En redes con latencias afines, el PoA es como máximo <b>4/3</b>: el enrutamiento egoísta cuesta a lo sumo un 33% más que el plan central.</p>
+      </article>
+      <article class="card rv">
+        <span class="tag">Daskalakis, Goldberg y Papadimitriou · 2006</span>
+        <h3>Nash es PPAD-completo</h3>
+        <p>La solución siempre existe, pero no hay un camino eficiente conocido para hallarla; es tan difícil como encontrar puntos fijos de Brouwer. Si una supercomputadora no puede, es poco plausible que agentes reales lleguen solos.</p>
+      </article>
+      <article class="card rv">
+        <span class="tag">Zinkevich et al. · 2007</span>
+        <h3>Counterfactual Regret Minimization</h3>
+        <p>Autojuego que acumula el "arrepentimiento" de no haber jugado cada acción y ajusta las probabilidades en proporción a él (Regret Matching). Es la base de Libratus y Pluribus, que vencieron en póker No-Limit Texas Hold'em.</p>
+      </article>
+      <article class="card rv">
+        <span class="tag">IA y mercados</span>
+        <h3>GANs y colusión algorítmica</h3>
+        <p>En una GAN (Goodfellow, 2014) un Generador y un Discriminador juegan suma cero. Algoritmos de precios con Q-learning aprenden, sin pactar, a sostener precios altos castigando a quien baja, como Tit-for-Tat: un reto para el derecho antimonopolio.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10. CUÁNTICA ================= -->
+<section class="chapter" id="c10">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">10</span>
+      <div>
+        <p class="eyebrow">Capítulo 10</p>
+        <h2>Juegos cuánticos y cooperación climática</h2>
+        <p class="lede">Dos salidas al dilema del prisionero: una desde la física, con entrelazamiento, y otra desde la política, con sanciones coordinadas.</p>
+      </div>
+    </div>
+    <div class="split">
+      <div class="lab rv">
+        <div class="lab-head">
+          <div><h3>Protocolo EWL</h3><p>Eisert, Wilkens y Lewenstein (<em>Physical Review Letters</em>, 1999).</p></div>
+          <div class="seg" role="group" aria-label="Versión">
+            <button type="button" id="q-cl" aria-pressed="true">Clásico</button>
+            <button type="button" id="q-qu" aria-pressed="false">Cuántico</button>
+          </div>
+        </div>
+        <div class="mx" id="q-mx" style="--cols:2"></div>
+        <p class="mx-explain" id="q-note"></p>
+      </div>
+      <div class="stack">
+        <article class="card rv"><span class="tag">Mecánica</span><h3>Qubits entrelazados</h3><p>Un entrelazador J crea un estado inicial entrelazado, cada jugador aplica una puerta unitaria a su qubit, se aplica J<sup>†</sup> y se mide. El entrelazamiento actúa como una restricción estructural que evita la deserción sin contratos ni comunicación.</p></article>
+        <article class="card rv"><span class="tag">William Nordhaus · Nobel de Economía</span><h3>Clubes climáticos</h3><p>Contra el polizón en acuerdos como el de París: un arancel uniforme a los países que no participan funciona como sanción coordinada solo contra los desertores. Los modelos indican que una penalización pequeña puede sostener una cooperación amplia.</p></article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RESUMEN ================= -->
+<section class="chapter" id="resumen">
+  <div class="wrap">
+    <div class="ch-head">
+      <span class="ch-num" aria-hidden="true">Σ</span>
+      <div>
+        <p class="eyebrow">Cuadro resumen</p>
+        <h2>Conceptos clave</h2>
+        <p class="lede">Toca cada tarjeta para ver su idea esencial. Sirve como repaso rápido al cerrar la exposición.</p>
+      </div>
+    </div>
+    <div class="flip-grid" id="flips"></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Teoría de Juegos · Síntesis teórica</span>
+    <span>Investigación de Operaciones</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (n, d = 0) => n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
+const redrawers = [];
+
+/* ---------- aparición ---------- */
+const rvs = [...document.querySelectorAll('.rv')];
+if ('IntersectionObserver' in window && !reduce) {
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.remove('wait'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  rvs.forEach(el => { if (el.getBoundingClientRect().top > innerHeight) { el.classList.add('wait'); io.observe(el); } });
+}
+
+/* ---------- navegación y progreso ---------- */
+const ids = ['inicio','que-es','c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','resumen'];
+const secs = ids.map(id => document.getElementById(id));
+const links = [...document.querySelectorAll('#nav a')];
+function current() {
+  let i = 0;
+  secs.forEach((s, k) => { if (s.getBoundingClientRect().top <= 120) i = k; });
+  return i;
+}
+function onScroll() {
+  const h = document.documentElement.scrollHeight - innerHeight;
+  $('#progress').style.transform = `scaleX(${h > 0 ? scrollY / h : 0})`;
+  const c = current();
+  links.forEach((a, k) => a.classList.toggle('on', k === c));
+  const on = links[c]; if (on) { const n = $('#nav'); const l = on.offsetLeft - n.clientWidth / 2 + on.clientWidth / 2; n.scrollTo({ left: l }); }
+}
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+addEventListener('keydown', e => {
+  const t = e.target; if (t.matches && t.matches('input,textarea,select')) return;
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  if (t.closest && t.closest('.tl-track')) return;
+  e.preventDefault();
+  let c = current();
+  if (e.key === 'ArrowRight' && secs[c].getBoundingClientRect().top > 130) c--; // aún no llegamos al inicio del actual
+  const n = Math.max(0, Math.min(secs.length - 1, c + (e.key === 'ArrowRight' ? 1 : -1)));
+  secs[n].scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+});
+
+/* ---------- matriz genérica ---------- */
+function buildMatrix(el, rows, cols, pay, onPick) {
+  el.style.setProperty('--cols', cols.length);
+  el.innerHTML = '<div></div>' + cols.map(c => `<div class="mx-h mx-hb">${c}</div>`).join('');
+  rows.forEach((r, i) => {
+    el.insertAdjacentHTML('beforeend', `<div class="mx-h mx-ha">${r}</div>`);
+    cols.forEach((c, j) => {
+      const [a, b] = pay[i][j];
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'cell'; btn.dataset.i = i; btn.dataset.j = j;
+      btn.setAttribute('aria-label', `${r} contra ${c}: A obtiene ${a}, B obtiene ${b}`);
+      btn.innerHTML = `<span class="pb">${b}</span><span class="pa">${a}</span>`;
+      if (onPick) btn.addEventListener('click', () => onPick(i, j, btn));
+      el.appendChild(btn);
+    });
+  });
+  return el;
+}
+function bestMarks(el, pay, step) {
+  const cells = (i, j) => el.querySelector(`.cell[data-i="${i}"][data-j="${j}"]`);
+  const R = pay.length, C = pay[0].length;
+  if (step >= 1) for (let j = 0; j < C; j++) { const m = Math.max(...pay.map(r => r[j][0])); for (let i = 0; i < R; i++) if (pay[i][j][0] === m) cells(i, j).querySelector('.pa').classList.add('best'); }
+  if (step >= 2) for (let i = 0; i < R; i++) { const m = Math.max(...pay[i].map(c => c[1])); for (let j = 0; j < C; j++) if (pay[i][j][1] === m) cells(i, j).querySelector('.pb').classList.add('best'); }
+  if (step >= 3) el.querySelectorAll('.cell').forEach(c => { if (c.querySelector('.pa.best') && c.querySelector('.pb.best')) c.classList.add('nash'); });
+}
+function clearMarks(el) { el.querySelectorAll('.best').forEach(x => x.classList.remove('best')); el.querySelectorAll('.cell').forEach(c => c.classList.remove('nash', 'pareto', 'sel')); }
+
+/* ---------- hero: dilema del prisionero ---------- */
+const PD = [[[3,3],[0,5]],[[5,0],[1,1]]];
+const heroTxt = {
+  '00': '<b>Ambos cooperan: (3, 3).</b> Es el mejor resultado conjunto, pero no es estable: cada uno ganaría 5 si deserta mientras el otro coopera.',
+  '01': '<b>A coopera y B deserta: (0, 5).</b> A queda como el ingenuo. Si A cambia a desertar, sube de 0 a 1.',
+  '10': '<b>A deserta y B coopera: (5, 0).</b> B queda como el ingenuo. Si B cambia a desertar, sube de 0 a 1.',
+  '11': '<b>Ambos desertan: (1, 1). Equilibrio de Nash.</b> Ninguno gana cambiando solo (bajaría de 1 a 0), aunque los dos estarían mejor en (3, 3).'
+};
+const hmx = $('#hero-mx'), hex = $('#mx-explain');
+let heroTimers = [];
+buildMatrix(hmx, ['Coopera', 'Deserta'], ['Coopera', 'Deserta'], PD, (i, j, btn) => {
+  hmx.querySelectorAll('.cell').forEach(c => c.classList.remove('sel'));
+  btn.classList.add('sel'); hex.innerHTML = heroTxt[`${i}${j}`];
+});
+function runHero() {
+  heroTimers.forEach(clearTimeout); heroTimers = [];
+  clearMarks(hmx);
+  const steps = [
+    [300, () => { bestMarks(hmx, PD, 1); hex.innerHTML = '<b>Paso 1.</b> Para cada columna, A marca su mejor respuesta: desertar siempre le da más (5 > 3 y 1 > 0).'; }],
+    [2000, () => { bestMarks(hmx, PD, 2); hex.innerHTML = '<b>Paso 2.</b> Para cada fila, B marca su mejor respuesta: también desertar.'; }],
+    [3700, () => { bestMarks(hmx, PD, 3); hmx.querySelector('.cell[data-i="0"][data-j="0"]').classList.add('pareto'); hex.innerHTML = heroTxt['11'] + ' La casilla punteada es el óptimo de Pareto.'; }]
+  ];
+  if (reduce) steps.forEach(s => s[1]()); else steps.forEach(([t, f]) => heroTimers.push(setTimeout(f, t)));
+}
+$('#mx-run').addEventListener('click', runHero);
+heroTimers.push(setTimeout(runHero, 900));
+
+/* ---------- línea de tiempo ---------- */
+const TL = [
+  ['1944','von Neumann y Morgenstern','Theory of Games and Economic Behavior: formalizan los juegos de suma cero.','c1'],
+  ['1950s','John Nash','Equilibrio en juegos de suma no cero; existe en todo juego finito (estrategias mixtas).','c1'],
+  ['1953','Lloyd Shapley','Valor de Shapley: reparto según la contribución marginal, con cuatro axiomas.','c1'],
+  ['1962','Gale y Shapley','Algoritmo de aceptación diferida: emparejamientos estables.','c6'],
+  ['1967','John Harsanyi','Tipos: la información incompleta se vuelve imperfecta pero completa.','c2'],
+  ['1973','Maynard Smith y Price','Estrategia evolutivamente estable, publicada en Nature.','c5'],
+  ['1976','Robert Aumann','Teorema del Acuerdo: no se puede "acordar estar en desacuerdo".','c2'],
+  ['1982','Ariel Rubinstein','Negociación con ofertas alternadas: acuerdo inmediato y único.','c3'],
+  ['1985','Mertens y Zamir','Espacio de tipos universal de creencias de orden superior.','c2'],
+  ['1986','Fudenberg y Maskin','Teorema Popular: la paciencia sostiene la cooperación.','c3'],
+  ['1994','Papadimitriou','Define la clase de complejidad PPAD.','c9'],
+  ['1995','Rosemarie Nagel','Concurso de belleza p: la gente razona pocos niveles.','c4'],
+  ['1999','Eisert, Wilkens y Lewenstein','Dilema del prisionero cuántico (protocolo EWL).','c10'],
+  ['1999','Koutsoupias y Papadimitriou','Definen el Precio de la Anarquía.','c9'],
+  ['2001','Henrich et al.','Juego del Ultimátum en 15 sociedades de pequeña escala.','c4'],
+  ['2002','Roughgarden y Tardos','PoA en redes congestionadas: como máximo 4/3.','c9'],
+  ['2006','Daskalakis, Goldberg y Papadimitriou','Calcular un equilibrio de Nash es PPAD-completo.','c9'],
+  ['2007','Zinkevich et al. · Edelman, Ostrovsky y Schwarz','CFR para póker; modelo de equilibrio de las subastas GSP.','c9'],
+  ['2012','Roth y Shapley','Nobel de Economía por pasar de la teoría al diseño de mercados.','c6'],
+  ['2014','Ian Goodfellow','GANs: un generador y un discriminador en un juego de suma cero.','c9'],
+  ['2018','Buterin, Hitzig y Weyl','Liberal Radicalism: el financiamiento cuadrático.','c8']
+];
+const track = $('#tl-track'), tlCard = $('#tl-card');
+let tlI = 0;
+TL.forEach((e, k) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tl-dot'; b.setAttribute('role', 'tab');
+  b.innerHTML = `<i></i><span>${e[0]}</span>`; b.setAttribute('aria-label', `${e[0]}: ${e[1]}`);
+  b.addEventListener('click', () => tlSel(k));
+  track.appendChild(b);
+});
+function tlSel(k) {
+  tlI = (k + TL.length) % TL.length;
+  [...track.children].forEach((b, i) => b.setAttribute('aria-selected', i === tlI));
+  const e = TL[tlI], ch = e[3].replace('c', '');
+  tlCard.innerHTML = `<div class="big tl-swap">${e[0]}</div><div class="tl-swap"><h3>${e[1]}</h3><p>${e[2]} <a href="#${e[3]}" class="mono" style="font-size:.8rem">Cap. ${ch} →</a></p></div><div class="tl-nav"><button class="btn btn-sm" type="button" data-d="-1" aria-label="Anterior">←</button><button class="btn btn-sm" type="button" data-d="1" aria-label="Siguiente">→</button></div>`;
+  tlCard.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => tlSel(tlI + +b.dataset.d)));
+  const dot = track.children[tlI]; track.scrollTo({ left: dot.offsetLeft - track.clientWidth / 2 + dot.clientWidth / 2, behavior: reduce ? 'auto' : 'smooth' });
+}
+track.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); tlSel(tlI + (e.key === 'ArrowRight' ? 1 : -1)); track.children[tlI].focus(); } });
+tlSel(0);
+
+/* ---------- dilema repetido ---------- */
+const PAY = { CC: [3,3], CD: [0,5], DC: [5,0], DD: [1,1] };
+// cada estrategia recibe (mis jugadas, jugadas del otro)
+const STRATS = {
+  tft:  { n: 'Tit-for-Tat', d: 'empieza cooperando y luego copia tu jugada anterior', f: (m, o) => o.length ? o[o.length - 1] : 'C' },
+  allc: { n: 'Siempre coopera', d: 'coopera pase lo que pase', f: () => 'C' },
+  alld: { n: 'Siempre deserta', d: 'deserta pase lo que pase', f: () => 'D' },
+  grim: { n: 'Rencoroso', d: 'coopera hasta que lo traicionas una vez; después deserta para siempre', f: (m, o) => o.includes('D') ? 'D' : 'C' },
+  stft: { n: 'Desconfiado', d: 'empieza desertando y luego copia tu jugada anterior', f: (m, o) => o.length ? o[o.length - 1] : 'D' },
+  rand: { n: 'Aleatorio', d: 'lanza una moneda en cada ronda', f: () => Math.random() < .5 ? 'C' : 'D' }
+};
+const ROUNDS = 10;
+let opp = 'mystery', hidden = null, my = [], ot = [], sy = 0, sr = 0;
+const oppEl = $('#opp');
+[['mystery', 'Rival sorpresa'], ...Object.entries(STRATS).map(([k, v]) => [k, v.n])].forEach(([k, n]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.dataset.k = k;
+  b.addEventListener('click', () => { opp = k; resetGame(); });
+  oppEl.appendChild(b);
+});
+function resetGame() {
+  [...oppEl.children].forEach(b => b.setAttribute('aria-pressed', b.dataset.k === opp));
+  const keys = Object.keys(STRATS);
+  hidden = opp === 'mystery' ? keys[Math.floor(Math.random() * keys.length)] : opp;
+  my = []; ot = []; sy = 0; sr = 0;
+  $('#sc-y').textContent = 0; $('#sc-r').textContent = 0;
+  $('#sc-r-name').textContent = opp === 'mystery' ? 'Rival sorpresa (B)' : `${STRATS[opp].n} (B)`;
+  $('#mv-c').disabled = $('#mv-d').disabled = false;
+  $('#game-msg').innerHTML = opp === 'mystery' ? 'Tu rival tiene una estrategia oculta. Juega y trata de adivinarla.' : `Tu rival <b>${STRATS[opp].d}</b>. Elige tu primera jugada.`;
+  document.querySelectorAll('#mini-mx [data-k]').forEach(d => d.classList.remove('hl'));
+  drawHist();
+}
+function drawHist(newIdx) {
+  let h = '<span>Tú</span>';
+  for (let i = 0; i < ROUNDS; i++) h += `<span class="slot y ${my[i] || ''} ${i === newIdx ? 'new' : ''}">${my[i] || ''}</span>`;
+  h += '<span>Rival</span>';
+  for (let i = 0; i < ROUNDS; i++) h += `<span class="slot r ${ot[i] || ''} ${i === newIdx ? 'new' : ''}">${ot[i] || ''}</span>`;
+  $('#hist').innerHTML = h;
+}
+function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+function play(mv) {
+  if (my.length >= ROUNDS) return;
+  const r = STRATS[hidden].f(ot, my);
+  my.push(mv); ot.push(r);
+  const [a, b] = PAY[mv + r]; sy += a; sr += b;
+  $('#sc-y').textContent = sy; $('#sc-r').textContent = sr; bump($('#sc-y')); bump($('#sc-r'));
+  document.querySelectorAll('#mini-mx [data-k]').forEach(d => d.classList.toggle('hl', d.dataset.k === mv + r));
+  drawHist(my.length - 1);
+  const word = x => x === 'C' ? 'cooperó' : 'desertó';
+  if (my.length < ROUNDS) {
+    $('#game-msg').innerHTML = `Ronda ${my.length}: tu rival <b>${word(r)}</b>. Ganaste ${a}, tu rival ${b}.`;
+  } else {
+    $('#mv-c').disabled = $('#mv-d').disabled = true;
+    const reveal = opp === 'mystery' ? `Tu rival era <b>${STRATS[hidden].n}</b>: ${STRATS[hidden].d}. ` : '';
+    const lesson = sy >= 28 ? 'Sostuvieron la cooperación: eso es lo que el Teorema Popular explica.' : sy > sr ? 'Ganaste el duelo, pero la cooperación mutua daba 30 puntos a cada uno.' : 'Cuando la traición se castiga, desertar deja de pagar.';
+    $('#game-msg').innerHTML = `${reveal}Final: <b>${sy} contra ${sr}</b>. ${lesson} <button class="btn btn-sm" type="button" id="again" style="margin-left:6px">Jugar otra vez</button>`;
+    $('#again').addEventListener('click', resetGame);
+  }
+}
+$('#mv-c').addEventListener('click', () => play('C'));
+$('#mv-d').addEventListener('click', () => play('D'));
+resetGame();
+
+$('#tour-run').addEventListener('click', () => {
+  const keys = ['tft', 'allc', 'grim', 'alld', 'stft'], N = 200;
+  const tot = Object.fromEntries(keys.map(k => [k, 0]));
+  for (let i = 0; i < keys.length; i++) for (let j = i; j < keys.length; j++) {
+    const A = STRATS[keys[i]], B = STRATS[keys[j]], ma = [], mb = [];
+    let pa = 0, pb = 0;
+    for (let t = 0; t < N; t++) { const x = A.f(ma, mb), y = B.f(mb, ma); ma.push(x); mb.push(y); pa += PAY[x + y][0]; pb += PAY[x + y][1]; }
+    tot[keys[i]] += pa; if (i !== j) tot[keys[j]] += pb;
+  }
+  const order = keys.slice().sort((a, b) => tot[b] - tot[a]), max = tot[order[0]];
+  $('#tour').innerHTML = order.map((k, i) => `<div class="bar-row ${i === 0 ? 'top' : ''}"><span>${STRATS[k].n}</span><div class="track"><div class="fill"></div></div><output>${fmt(tot[k])}</output></div>`).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => $('#tour').querySelectorAll('.fill').forEach((f, i) => f.style.width = (tot[order[i]] / max * 100) + '%')));
+  $('#tour-note').innerHTML = `Todos contra todos. <b>${STRATS[order[0]].n}</b> queda primero: es amable, castiga la traición y perdona. Siempre deserta nunca pierde un duelo, pero acumula poco en el torneo.`;
+});
+
+/* ---------- Rubinstein ---------- */
+function rub() {
+  const a = +$('#dA').value, b = +$('#dB').value, s = (1 - b) / (1 - a * b);
+  $('#dA-o').textContent = fmt(a, 2); $('#dB-o').textContent = fmt(b, 2);
+  const pa = Math.round(s * 100);
+  $('#pie-a').style.flexBasis = (s * 100) + '%'; $('#pie-b').style.flexBasis = ((1 - s) * 100) + '%';
+  $('#pie-a').textContent = pa >= 12 ? `A ${pa}%` : ''; $('#pie-b').textContent = 100 - pa >= 12 ? `${100 - pa}% B` : '';
+  $('#rub-note').innerHTML = Math.abs(a - b) < .02 ? 'Igual de pacientes: A obtiene un poco más por proponer primero.' : a < b ? '<b>A es más impaciente</b> y obtiene una porción menor: tolera menos la espera.' : '<b>B es más impaciente</b> y por eso cede una porción mayor a A.';
+}
+['#dA', '#dB'].forEach(s => $(s).addEventListener('input', rub)); rub();
+
+/* ---------- cadena de tiendas ---------- */
+const storesEl = $('#stores');
+for (let i = 0; i < 20; i++) storesEl.insertAdjacentHTML('beforeend', `<div class="store">${i + 1}</div>`);
+const stores = [...storesEl.children];
+let csT = [];
+function cs(mode) {
+  csT.forEach(clearTimeout); csT = [];
+  $('#cs-back').setAttribute('aria-pressed', mode === 'back'); $('#cs-rep').setAttribute('aria-pressed', mode === 'rep');
+  stores.forEach(s => s.className = 'store');
+  const d = reduce ? 0 : 110;
+  if (mode === 'back') {
+    $('#cs-note').innerHTML = 'Se razona desde la última etapa: en la 20 pelear ya no disuade a nadie, así que el monopolio acomoda. Sabiéndolo, tampoco pelea en la 19… y la disuasión se desmorona hasta la primera: <b>todos entran</b>.';
+    for (let i = 19; i >= 0; i--) csT.push(setTimeout(() => stores[i].classList.add('enter'), (19 - i) * d));
+  } else {
+    $('#cs-note').innerHTML = 'La intuición: pelear al inicio construye <b>reputación</b> y los demás desisten. Selten lo explica con tres niveles de decisión (rutina, imaginación y razonamiento lógico): la amenaza no creíble gana en la práctica.';
+    for (let i = 0; i < 20; i++) csT.push(setTimeout(() => stores[i].classList.add(i < 3 ? 'fight' : 'out'), i * d));
+  }
+}
+$('#cs-back').addEventListener('click', () => cs('back'));
+$('#cs-rep').addEventListener('click', () => cs('rep'));
+
+/* ---------- concurso de belleza ---------- */
+const ax = $('#bc-axis');
+const levels = [0, 1, 2, 3].map(k => 50 * Math.pow(2 / 3, k));
+levels.forEach((v, k) => ax.insertAdjacentHTML('beforeend', `<div class="lvl" style="left:${v}%"><span>L${k} ≈ ${fmt(v, 0)}</span></div>`));
+ax.insertAdjacentHTML('beforeend', '<div class="lvl nash" style="left:0%"><span>Nash</span></div>');
+[0, 25, 50, 75, 100].forEach(v => ax.insertAdjacentHTML('beforeend', `<span class="tick" style="left:${v}%">${v}</span>`));
+ax.insertAdjacentHTML('beforeend', '<div class="you" id="bc-you"><span>Tú</span><i></i></div>');
+function bcYou() {
+  const g = Math.max(0, Math.min(100, +$('#bc-guess').value || 0));
+  $('#bc-you').style.left = g + '%';
+  return g;
+}
+function bcLevel(g) {
+  let k = 0, best = Infinity;
+  levels.forEach((v, i) => { if (Math.abs(v - g) < best) { best = Math.abs(v - g); k = i; } });
+  return g < 5 ? 'como el equilibrio de Nash' : g > 60 ? 'como nivel 0 (sin anticipar a nadie)' : `como nivel ${k}`;
+}
+$('#bc-guess').addEventListener('input', () => { const g = bcYou(); $('#bc-msg').innerHTML = `Con ${g} razonas aproximadamente <b>${bcLevel(g)}</b>. Simula la clase para ver quién gana.`; });
+const gauss = () => { let u = 0; for (let i = 0; i < 6; i++) u += Math.random(); return u - 3; };
+$('#bc-sim').addEventListener('click', () => {
+  const g = bcYou();
+  ax.querySelectorAll('.dot,.mark').forEach(x => x.remove());
+  const xs = [];
+  for (let i = 0; i < 30; i++) {
+    const r = Math.random();
+    let v = r < .25 ? Math.random() * 100 : r < .6 ? 33 + gauss() * 4 : r < .85 ? 22 + gauss() * 3 : r < .95 ? 15 + gauss() * 2 : Math.random() * 3;
+    xs.push(Math.max(0, Math.min(100, v)));
+  }
+  const all = [...xs, g], avg = all.reduce((s, v) => s + v, 0) / all.length, tgt = avg * 2 / 3;
+  xs.forEach((v, i) => {
+    const d = document.createElement('div'); d.className = 'dot';
+    d.style.left = v + '%'; d.style.bottom = '100px';
+    ax.appendChild(d);
+    setTimeout(() => { d.style.bottom = (36 + (i % 4) * 11) + 'px'; }, reduce ? 0 : 20 + i * 18);
+  });
+  ax.insertAdjacentHTML('beforeend', `<div class="mark avg" style="left:${avg}%"><span>promedio ${fmt(avg, 1)}</span></div><div class="mark tgt" style="left:${tgt}%"><span>2/3 → ${fmt(tgt, 1)}</span></div>`);
+  const closest = xs.reduce((b, v) => Math.abs(v - tgt) < Math.abs(b - tgt) ? v : b, xs[0]);
+  const youWin = Math.abs(g - tgt) <= Math.abs(closest - tgt);
+  $('#bc-msg').innerHTML = `Promedio de la clase: <b>${fmt(avg, 1)}</b>, así que el número ganador es <b>${fmt(tgt, 1)}</b>. ${youWin ? 'Tu número es el más cercano: ¡ganaste!' : `Un compañero quedó más cerca con ${fmt(closest, 1)}.`} El equilibrio de Nash es 0, pero en la práctica la gente razona solo unos pocos niveles.`;
+});
+bcYou();
+
+/* ---------- canvas helpers ---------- */
+function fit(cv) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+function animate(draw) {
+  if (reduce) { draw(1); return; }
+  const t0 = performance.now();
+  const step = t => { const p = Math.min(1, (t - t0) / 1000); draw(1 - Math.pow(1 - p, 3)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function frame(ctx, w, h, P, yl) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1; ctx.fillStyle = cssv('--muted');
+  ctx.font = `11px ${cssv('--f-mono')}`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  yl.forEach(([v, s]) => { const y = P.t + (1 - v) * P.h; ctx.beginPath(); ctx.moveTo(P.l, y); ctx.lineTo(P.l + P.w, y); ctx.stroke(); ctx.fillText(s, P.l - 8, y); });
+}
+
+/* ---------- halcón y paloma ---------- */
+const hd = $('#hd-cv');
+let hdTraj = [];
+function hdCompute() {
+  const V = +$('#hd-v').value, C = +$('#hd-c').value; let x = +$('#hd-x').value / 100;
+  $('#hd-v-o').textContent = V; $('#hd-c-o').textContent = C; $('#hd-x-o').textContent = Math.round(x * 100) + '%';
+  hdTraj = []; const dt = .02, T = 24;
+  for (let t = 0; t <= T; t += dt) { hdTraj.push(x); x += dt * x * (1 - x) * (V - x * C) / 2; x = Math.min(1, Math.max(0, x)); }
+  const ess = V >= C ? 1 : V / C;
+  $('#hd-final').textContent = Math.round(hdTraj[hdTraj.length - 1] * 100) + '%';
+  $('#hd-ess').textContent = V >= C ? 'Solo halcones' : `V/C = ${Math.round(ess * 100)}%`;
+  $('#hd-note').innerHTML = V >= C ? 'Si el premio vale más que el costo de pelear, <b>Halcón</b> es la ESS pura: toda la población termina peleando.' : 'Si pelear cuesta más que el premio, la población se estabiliza en una <b>mezcla</b>: los conflictos se ritualizan y pocos llegan a la sangre.';
+  return ess;
+}
+function hdDraw(p) {
+  const { ctx, w, h } = fit(hd), P = { l: 46, t: 14, w: w - 62, h: h - 40 };
+  frame(ctx, w, h, P, [[0, '0%'], [.5, '50%'], [1, '100%']]);
+  const n = Math.max(2, Math.floor(hdTraj.length * p)), X = i => P.l + i / (hdTraj.length - 1) * P.w, Y = v => P.t + (1 - v) * P.h;
+  ctx.fillStyle = cssv('--b-soft'); ctx.beginPath(); ctx.moveTo(X(0), Y(1));
+  for (let i = 0; i < n; i++) ctx.lineTo(X(i), Y(1)); for (let i = n - 1; i >= 0; i--) ctx.lineTo(X(i), Y(hdTraj[i])); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = cssv('--a-soft'); ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+  for (let i = 0; i < n; i++) ctx.lineTo(X(i), Y(hdTraj[i])); ctx.lineTo(X(n - 1), Y(0)); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = cssv('--a'); ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let i = 0; i < n; i++) i ? ctx.lineTo(X(i), Y(hdTraj[i])) : ctx.moveTo(X(i), Y(hdTraj[i])); ctx.stroke();
+  const V = +$('#hd-v').value, C = +$('#hd-c').value, e = V >= C ? 1 : V / C;
+  ctx.setLineDash([6, 5]); ctx.strokeStyle = cssv('--eq'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(P.l, Y(e)); ctx.lineTo(P.l + P.w, Y(e)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = cssv('--eq'); ctx.textAlign = 'right'; ctx.font = `600 11px ${cssv('--f-mono')}`; ctx.textBaseline = 'bottom'; ctx.fillText('ESS', P.l + P.w - 4, Y(e) - (e > .9 ? -16 : 4));
+  ctx.beginPath(); ctx.arc(X(n - 1), Y(hdTraj[n - 1]), 4.5, 0, 7); ctx.fillStyle = cssv('--a'); ctx.fill();
+  ctx.fillStyle = cssv('--muted'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.font = `11px ${cssv('--f-mono')}`; ctx.fillText('tiempo →', P.l + P.w, h - 6);
+}
+function hdRun() { hdCompute(); animate(hdDraw); }
+['#hd-v', '#hd-c', '#hd-x'].forEach(s => $(s).addEventListener('input', () => { hdCompute(); hdDraw(1); }));
+['#hd-v', '#hd-c', '#hd-x'].forEach(s => $(s).addEventListener('change', hdRun));
+hdCompute(); hdDraw(1);
+redrawers.push(() => hdDraw(1));
+
+/* ---------- oncología ---------- */
+const on = $('#on-cv');
+let onMode = 'mtd', onData = null;
+function onSim(mode) {
+  let S = .75, R = .01; const K = 1, rS = .04, rR = .03, a = 2, d = .08, dt = .25, N0 = S + R, T = 720;
+  let drug = 1, prog = null; const out = [];
+  for (let t = 0; t <= T; t += dt) {
+    const N = S + R;
+    if (mode === 'ad') { if (drug && N <= .5 * N0) drug = 0; else if (!drug && N >= N0) drug = 1; }
+    if (Math.abs(t % 2) < 1e-9) out.push([t, S, R, drug]);
+    const dS = rS * S * (1 - (S + R) / K) - d * drug * S, dR = rR * R * (1 - (R + a * S) / K);
+    S += dS * dt; R += dR * dt;
+    if (prog === null && R > S && S + R > N0) prog = t;
+  }
+  return { out, prog, T };
+}
+function onDraw(p) {
+  const { ctx, w, h } = fit(on), P = { l: 46, t: 26, w: w - 62, h: h - 50 };
+  frame(ctx, w, h, P, [[0, '0'], [.5, '0,5'], [1, '1']]);
+  const { out, T } = onData, n = Math.max(2, Math.floor(out.length * p));
+  const X = t => P.l + t / T * P.w, Y = v => P.t + (1 - v) * P.h;
+  ctx.fillStyle = cssv('--eq');
+  for (let i = 0; i < n; i++) if (out[i][3]) ctx.fillRect(X(out[i][0]), 6, Math.max(1, P.w / out.length + .5), 8);
+  ctx.fillStyle = cssv('--muted'); ctx.font = `10px ${cssv('--f-mono')}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  [[1, '--b'], [2, '--a']].forEach(([k, c]) => {
+    ctx.strokeStyle = cssv(c); ctx.lineWidth = 2.5; ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = X(out[i][0]), y = Y(out[i][k]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+  });
+  ctx.fillStyle = cssv('--muted'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.font = `11px ${cssv('--f-mono')}`;
+  ctx.fillText(`días → ${T}`, P.l + P.w, h - 6);
+}
+function onRun(mode) {
+  onMode = mode; onData = onSim(mode);
+  $('#on-mtd').setAttribute('aria-pressed', mode === 'mtd'); $('#on-ad').setAttribute('aria-pressed', mode === 'ad');
+  $('#on-prog').textContent = onData.prog === null ? `contenido ${onData.T} días` : `día ${Math.round(onData.prog)}`;
+  $('#on-prog').className = onData.prog === null ? 'cb' : 'ca';
+  $('#on-note').innerHTML = mode === 'mtd'
+    ? '<b>Dosis máxima tolerada:</b> elimina a las sensibles y provoca liberación competitiva. Las resistentes, que sin fármaco están en desventaja, quedan sin rivales y causan la recaída.'
+    : '<b>Contener, no erradicar:</b> se suspende el fármaco cuando el tumor baja a la mitad y se reactiva cuando vuelve al nivel inicial. Las sensibles recuperan terreno y mantienen a raya a las resistentes.';
+  animate(onDraw);
+}
+$('#on-mtd').addEventListener('click', () => onRun('mtd'));
+$('#on-ad').addEventListener('click', () => onRun('ad'));
+onData = onSim('mtd'); onRun('mtd');
+redrawers.push(() => onDraw(1));
+
+/* ---------- Gale-Shapley ---------- */
+const ST = [{ n: 'Ana', p: [0, 1, 2] }, { n: 'Beto', p: [0, 2, 1] }, { n: 'Caro', p: [1, 0, 2] }];
+const HO = [{ n: 'Norte', p: [1, 2, 0] }, { n: 'Sur', p: [0, 1, 2] }, { n: 'Centro', p: [2, 0, 1] }];
+const gsEvents = (() => {
+  const nxt = [0, 0, 0], held = [null, null, null], free = [0, 1, 2], ev = [];
+  while (free.length) {
+    const s = free.shift(), h = ST[s].p[nxt[s]++], cur = held[h];
+    if (cur === null) { held[h] = s; ev.push({ s, h, r: 'held', held: held.slice() }); }
+    else if (HO[h].p.indexOf(s) < HO[h].p.indexOf(cur)) { held[h] = s; free.unshift(cur); ev.push({ s, h, r: 'swap', out: cur, held: held.slice() }); }
+    else { free.unshift(s); ev.push({ s, h, r: 'rej', held: held.slice() }); }
+  }
+  return ev;
+})();
+let gsI = -1;
+function gsDraw() {
+  const e = gsI >= 0 ? gsEvents[gsI] : null, held = e ? e.held : [null, null, null];
+  const sy = i => 50 + i * 75, sx = 90, hx = 350;
+  let g = `<text x="${sx}" y="14" text-anchor="middle" font-family="var(--f-mono)" font-size="11" fill="var(--muted)">ESTUDIANTES</text><text x="${hx}" y="14" text-anchor="middle" font-family="var(--f-mono)" font-size="11" fill="var(--muted)">HOSPITALES</text>`;
+  held.forEach((s, h) => { if (s !== null) g += `<line x1="${sx + 22}" y1="${sy(s)}" x2="${hx - 22}" y2="${sy(h)}" stroke="var(--eq)" stroke-width="3.5" stroke-linecap="round"/>`; });
+  if (e && e.r === 'rej') g += `<line x1="${sx + 22}" y1="${sy(e.s)}" x2="${hx - 22}" y2="${sy(e.h)}" stroke="var(--a)" stroke-width="2" stroke-dasharray="6 5"/><text x="${(sx + hx) / 2}" y="${(sy(e.s) + sy(e.h)) / 2 - 6}" text-anchor="middle" font-size="16" font-weight="700" fill="var(--a)">✕</text>`;
+  if (e && e.r === 'swap') g += `<line x1="${sx + 22}" y1="${sy(e.out)}" x2="${hx - 22}" y2="${sy(e.h)}" stroke="var(--a)" stroke-width="2" stroke-dasharray="6 5"/>`;
+  ST.forEach((s, i) => { g += `<circle cx="${sx}" cy="${sy(i)}" r="20" fill="var(--a-soft)" stroke="var(--a)" stroke-width="2"/><text x="${sx}" y="${sy(i) + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" font-family="var(--f-body)">${s.n}</text><text x="${sx - 28}" y="${sy(i) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${s.p.map(h => HO[h].n[0]).join('›')}</text>`; });
+  HO.forEach((h, i) => { g += `<circle cx="${hx}" cy="${sy(i)}" r="20" fill="var(--b-soft)" stroke="var(--b)" stroke-width="2"/><text x="${hx}" y="${sy(i) + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)" font-family="var(--f-body)">${h.n}</text><text x="${hx + 28}" y="${sy(i) + 4}" text-anchor="start" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${h.p.map(s => ST[s].n[0]).join('›')}</text>`; });
+  $('#gs-svg').innerHTML = g;
+  const log = $('#gs-log');
+  if (!e) log.innerHTML = 'Las letras junto a cada nodo son sus preferencias, de la más a la menos deseada. Pulsa <b>Siguiente propuesta</b>.';
+  else {
+    const S = ST[e.s].n, H = HO[e.h].n;
+    log.innerHTML = `<b>${gsI + 1}.</b> ${S} se postula a ${H}. ` + (e.r === 'held' ? `${H} estaba libre y la retiene.` : e.r === 'swap' ? `${H} prefiere a ${S} sobre ${ST[e.out].n}, que queda libre.` : `${H} prefiere a quien ya tiene y la rechaza.`);
+    if (gsI === gsEvents.length - 1) log.innerHTML += ' <b>Emparejamiento estable:</b> ninguna pareja preferiría estar junta antes que con lo que obtuvo.';
+  }
+  $('#gs-next').disabled = gsI >= gsEvents.length - 1;
+}
+$('#gs-next').addEventListener('click', () => { gsI++; gsDraw(); });
+$('#gs-reset').addEventListener('click', () => { gsI = -1; gsDraw(); });
+gsDraw();
+
+/* ---------- subastas ---------- */
+const VAL = 10, OTH = [6, 4], CTR = [100, 80];
+function auction(bid, mech) {
+  const bs = [{ k: 'A', b: bid }, { k: 'B', b: OTH[0] }, { k: 'C', b: OTH[1] }].sort((x, y) => y.b - x.b || (x.k === 'A' ? 1 : -1));
+  const pos = bs.findIndex(x => x.k === 'A');
+  if (pos > 1) return { pos: null, pay: 0, u: 0 };
+  const c = [...CTR, 0];
+  let pay;
+  if (mech === 'gsp') pay = bs[pos + 1].b * CTR[pos];
+  else { pay = 0; for (let j = pos + 1; j < bs.length; j++) pay += bs[j].b * (c[j - 1] - c[j]); }
+  return { pos: pos + 1, pay, u: VAL * CTR[pos] - pay };
+}
+function aucChart(mech, bid) {
+  const W = 300, H = 120, L = 34, B = 22, maxU = 600, X = b => L + b / 12 * (W - L - 8), Y = u => 8 + (1 - u / maxU) * (H - B - 8);
+  let d = '';
+  for (let b = 0; b <= 12; b += .05) { const u = auction(b, mech).u; d += (d ? 'L' : 'M') + X(b).toFixed(1) + ' ' + Y(u).toFixed(1); }
+  const cu = auction(bid, mech).u;
+  return `<svg viewBox="0 0 ${W} ${H}" aria-label="Utilidad según la puja">
+    ${[0, 300, 600].map(u => `<line x1="${L}" x2="${W - 8}" y1="${Y(u)}" y2="${Y(u)}" stroke="var(--line)"/><text x="${L - 6}" y="${Y(u) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">${u}</text>`).join('')}
+    <line x1="${X(10)}" x2="${X(10)}" y1="6" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="3 3"/>
+    <text x="${X(10)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">valor $10</text>
+    <text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)" font-family="var(--f-mono)">puja →</text>
+    <path d="${d}" fill="none" stroke="var(--a)" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="${X(bid)}" cy="${Y(cu)}" r="6" fill="var(--surface)" stroke="var(--a)" stroke-width="3"/>
+  </svg>`;
+}
+function aucRender() {
+  const bid = +$('#bid').value; $('#bid-o').textContent = '$' + fmt(bid, 1);
+  const names = { gsp: 'GSP · segundo precio generalizado', vcg: 'VCG · Vickrey-Clarke-Groves' };
+  ['gsp', 'vcg'].forEach(m => {
+    const r = auction(bid, m);
+    let best = 0; for (let b = 0; b <= 12; b += .5) best = Math.max(best, auction(b, m).u);
+    const truthful = auction(VAL, m).u >= best;
+    $('#auc-' + m).innerHTML = `<h4>${names[m]} <span class="verdict ${truthful ? 'ok' : 'no'}">${truthful ? 'Pujar tu valor es óptimo' : 'Conviene pujar menos'}</span></h4>
+      <dl><dt>Espacio obtenido</dt><dd>${r.pos ? r.pos + '.º (' + CTR[r.pos - 1] + ' clics)' : 'ninguno'}</dd><dt>Pagas en total</dt><dd>$${fmt(r.pay)}</dd><dt>Tu ganancia</dt><dd class="u">$${fmt(r.u)}</dd></dl>${aucChart(m, bid)}`;
+  });
+  const g = auction(bid, 'gsp').u;
+  $('#auc-msg').innerHTML = bid > 6 ? 'Con una puja sincera quedas primero. En GSP, prueba bajar tu puja a un valor entre $4 y $6: ¿ganas más o menos?' : bid > 4 ? `Bajaste al segundo espacio. En GSP tu ganancia sube a <b>$${fmt(g)}</b>: eso es <em>bid shading</em>. En VCG, en cambio, pierdes: allí mentir no paga.` : 'Con una puja tan baja te quedas sin espacio en ambas subastas.';
+}
+$('#bid').addEventListener('input', aucRender); aucRender();
+
+/* ---------- financiamiento cuadrático ---------- */
+const money = v => v >= 1e12 ? '$' + fmt(v / 1e12, 1) + ' billones' : v >= 1e9 ? '$' + fmt(v / 1e9, 1) + ' mil millones' : v >= 1e6 ? '$' + fmt(v / 1e6, 1) + ' millones' : '$' + fmt(v);
+function qf() {
+  const N = Math.round(Math.pow(10, +$('#qf-n').value)), c = Math.round(Math.pow(10, +$('#qf-c').value));
+  $('#qf-n-o').textContent = fmt(N); $('#qf-c-o').textContent = '$' + fmt(c);
+  const tot = N * c, fund = Math.pow(N * Math.sqrt(c), 2);
+  $('#qf-tot').textContent = money(tot); $('#qf-fund').textContent = money(fund); $('#qf-mult').textContent = '×' + fmt(N);
+  const w = v => Math.max(1.5, Math.log10(Math.max(1, v)) / 12 * 100) + '%';
+  $('#qf-b1').style.width = w(tot); $('#qf-b2').style.width = w(fund);
+  $('#qf-note').innerHTML = N === 1 ? 'Un solo aportante no recibe subsidio: (√c)² = c.' : `Con ${fmt(N)} aportantes, cada peso aportado se convierte en ${fmt(N)} pesos de fondos. Pesa más la base amplia que el tamaño de la billetera.`;
+}
+const qfLog = v => String(Math.log10(v));
+document.querySelectorAll('[data-qf]').forEach(b => b.addEventListener('click', () => {
+  const [n, c] = b.dataset.qf.split(',').map(Number);
+  $('#qf-n').value = qfLog(n); $('#qf-c').value = qfLog(c); qf();
+  if (n === 100 && c === 100) $('#qf-note').innerHTML = '<b>Ataque Sybil:</b> el mismo multimillonario reparte sus $10.000 en 100 cuentas falsas y multiplica sus fondos por 100.';
+}));
+['#qf-n', '#qf-c'].forEach(s => $(s).addEventListener('input', qf)); qf();
+
+/* ---------- Braess ---------- */
+const NODES = { S: [50, 135], A: [280, 45], B: [280, 225], E: [510, 135] };
+const svgB = $('#br-svg');
+let brOn = false, cars = [], brRaf = null;
+function seg(a, b) { return `M${NODES[a][0]} ${NODES[a][1]} L${NODES[b][0]} ${NODES[b][1]}`; }
+function brBuild() {
+  const lab = (a, b, t, dy = -12) => { const x = (NODES[a][0] + NODES[b][0]) / 2, y = (NODES[a][1] + NODES[b][1]) / 2 + dy; return `<text class="elab" x="${x}" y="${y}">${t}</text>`; };
+  const tSA = brOn ? 40 : 20, tBE = brOn ? 40 : 20;
+  svgB.innerHTML = `
+    <path class="edge ${brOn ? 'hot' : 'cool'}" d="${seg('S', 'A')}"/><path class="edge" d="${seg('A', 'E')}" ${brOn ? 'style="opacity:.35"' : ''}/>
+    <path class="edge" d="${seg('S', 'B')}" ${brOn ? 'style="opacity:.35"' : ''}/><path class="edge ${brOn ? 'hot' : 'cool'}" d="${seg('B', 'E')}"/>
+    <path class="edge short ${brOn ? 'hot' : ''}" d="${seg('A', 'B')}" style="opacity:${brOn ? .55 : .12}"/>
+    ${lab('S', 'A', `T/100 = ${tSA} min`)}${lab('A', 'E', '45 min')}${lab('S', 'B', '45 min', 22)}${lab('B', 'E', `T/100 = ${tBE} min`, 22)}
+    ${brOn ? `<text class="elab" x="${NODES.A[0] + 12}" y="${(NODES.A[1] + NODES.B[1]) / 2 + 4}" text-anchor="start" style="text-anchor:start;fill:var(--a)">atajo 0 min</text>` : ''}
+    <g id="cars"></g>
+    ${Object.entries(NODES).map(([k, [x, y]]) => `<g class="node"><circle cx="${x}" cy="${y}" r="${k === 'S' || k === 'E' ? 24 : 18}"/><text x="${x}" y="${y}">${k === 'S' ? 'Inicio' : k === 'E' ? 'Fin' : k}</text></g>`).join('')}`;
+  const routes = brOn ? [['S', 'A', 'B', 'E']] : [['S', 'A', 'E'], ['S', 'B', 'E']];
+  const g = svgB.querySelector('#cars'); cars = [];
+  const per = brOn ? 14 : 7;
+  routes.forEach(r => {
+    const pts = r.map(k => NODES[k]);
+    for (let i = 0; i < per; i++) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('r', 4); c.setAttribute('class', 'car'); g.appendChild(c);
+      cars.push({ c, pts, off: i / per });
+    }
+  });
+  $('#br-time').textContent = brOn ? '80 min' : '65 min';
+  $('#br-time').className = brOn ? 'ca' : 'cb';
+  $('#br-poa').textContent = brOn ? '80/65 ≈ 1,23' : '1,00';
+  $('#br-note').innerHTML = brOn
+    ? 'Con el atajo, a cada conductor le conviene Inicio → A → B → Fin (40 + 0 + 40), así que <b>todos</b> lo toman. Nadie gana cambiando de ruta (cualquier otra tarda 85 min), pero todos tardan 15 minutos más. Añadir una vía empeoró el sistema.'
+    : 'Sin atajo, los conductores se reparten 2.000 y 2.000: cada ruta tarda 20 + 45 = 65 min. Es equilibrio de Nash y también el óptimo.';
+  $('#br-off').setAttribute('aria-pressed', !brOn); $('#br-on').setAttribute('aria-pressed', brOn);
+  if (reduce) placeCars(0);
+}
+function pointAt(pts, f) {
+  const L = []; let tot = 0;
+  for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); L.push(l); tot += l; }
+  let d = f * tot;
+  for (let i = 0; i < L.length; i++) { if (d <= L[i]) { const t = d / L[i]; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; } d -= L[i]; }
+  return pts[pts.length - 1];
+}
+function placeCars(t) {
+  const dur = brOn ? 8000 : 6500;
+  cars.forEach(o => { const f = ((t / dur) + o.off) % 1; const [x, y] = pointAt(o.pts, f); o.c.setAttribute('cx', x); o.c.setAttribute('cy', y); });
+}
+function brLoop(t) { placeCars(t); brRaf = requestAnimationFrame(brLoop); }
+$('#br-off').addEventListener('click', () => { brOn = false; brBuild(); });
+$('#br-on').addEventListener('click', () => { brOn = true; brBuild(); });
+brBuild();
+if (!reduce) {
+  const brIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { if (!brRaf) brRaf = requestAnimationFrame(brLoop); } else if (brRaf) { cancelAnimationFrame(brRaf); brRaf = null; } }));
+  brIO.observe(svgB);
+}
+
+/* ---------- cuántico ---------- */
+const qmx = $('#q-mx');
+function quantum(qu) {
+  $('#q-cl').setAttribute('aria-pressed', !qu); $('#q-qu').setAttribute('aria-pressed', qu);
+  const L = qu ? ['C', 'D', 'Q'] : ['C', 'D'];
+  const pay = qu ? [[[3,3],[0,5],[1,1]],[[5,0],[1,1],[0,5]],[[1,1],[5,0],[3,3]]] : PD;
+  buildMatrix(qmx, L, L, pay);
+  bestMarks(qmx, pay, 3);
+  $('#q-note').innerHTML = qu
+    ? 'Con entrelazamiento máximo aparece la estrategia <b class="ceq">Q</b>. Contra Q, desertar da 0, así que nadie quiere desviarse: <b>(Q, Q) = (3, 3)</b> es un equilibrio estable que alcanza el óptimo de Pareto.'
+    : 'Clásico: acciones discretas, cooperar (C) o desertar (D), sin forma de comprometerse. El equilibrio de Nash es <b>(D, D) con pago (1, 1)</b>.';
+}
+$('#q-cl').addEventListener('click', () => quantum(false));
+$('#q-qu').addEventListener('click', () => quantum(true));
+quantum(false);
+
+/* ---------- resumen ---------- */
+const SUM = [
+  ['Juegos de suma cero', 'von Neumann y Morgenstern, 1944', 'Formalización general del conflicto: lo que uno gana lo pierde el otro.'],
+  ['Equilibrio de Nash', 'Nash, años 50', 'Nadie gana desviándose solo; existe en todo juego finito (en estrategias mixtas).'],
+  ['Valor de Shapley', 'Shapley, 1953', 'Reparto justo según la contribución marginal, con cuatro axiomas.'],
+  ['Tipos y espacio universal', 'Harsanyi 1967 · Mertens-Zamir 1985', 'Modelar la información incompleta mediante jerarquías de creencias.'],
+  ['Teorema del Acuerdo', 'Aumann, 1976', 'Con prior común y posteriores de conocimiento común, no hay desacuerdo racional.'],
+  ['Folk Theorem', 'Fudenberg y Maskin, 1986', 'En juegos repetidos, con paciencia, casi todo pago factible y racional es equilibrio.'],
+  ['Negociación alternada', 'Rubinstein, 1982', 'Equilibrio perfecto único; acuerdo inmediato; el poder depende de la impaciencia.'],
+  ['Cadena de tiendas', 'Selten', 'Inducción hacia atrás frente a reputación y disuasión.'],
+  ['Racionalidad acotada, Level-k, QRE', 'Simon · Nagel 1995', 'Razonamiento limitado y errores menos frecuentes cuanto más cuestan.'],
+  ['ESS y replicador', 'Maynard Smith y Price, 1973', 'Estabilidad evolutiva sin racionalidad; dinámica por aptitud relativa.'],
+  ['Terapia adaptativa', 'Juegos de Stackelberg', 'Contener el tumor en lugar de erradicarlo para evitar la liberación competitiva.'],
+  ['Aceptación diferida y TTC', 'Gale-Shapley 1962 · Roth', 'Emparejamientos estables e intercambios de riñones.'],
+  ['VCG frente a GSP', 'Vickrey-Clarke-Groves · EOS 2007', 'VCG es veraz; GSP no, pero su LEFE de menor ingreso replica a VCG.'],
+  ['Financiamiento cuadrático', 'Buterin, Hitzig y Weyl, 2018', 'El subsidio crece con el número de aportantes; vulnerable a Sybil y colusión.'],
+  ['PPAD-completitud', 'Daskalakis, Goldberg, Papadimitriou, 2006', 'Calcular un equilibrio de Nash es computacionalmente intratable.'],
+  ['CFR', 'Zinkevich et al., 2007', 'Autojuego con arrepentimiento contrafactual para información imperfecta.'],
+  ['Precio de la Anarquía', 'Koutsoupias-Papadimitriou 1999 · Roughgarden-Tardos 2002', 'Peor Nash sobre óptimo; como máximo 4/3 con latencias afines.'],
+  ['Juegos cuánticos (EWL)', 'Eisert, Wilkens y Lewenstein, 1999', 'El entrelazamiento permite cooperar de forma estable en el Dilema del Prisionero.'],
+  ['Clubes climáticos', 'Nordhaus', 'Arancel uniforme a no miembros para sostener la cooperación.']
+];
+$('#flips').innerHTML = SUM.map(([t, a, d]) => `<button type="button" class="flip rv" aria-pressed="false"><div class="flip-in"><div class="flip-f"><h4>${t}</h4><small>${a}</small></div><div class="flip-b"><span>${d}</span><small>${a}</small></div></div></button>`).join('');
+$('#flips').querySelectorAll('.flip').forEach(b => b.addEventListener('click', () => { b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on')); }));
+
+/* ---------- redibujar en cambio de tema o tamaño ---------- */
+const redraw = () => redrawers.forEach(f => f());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(redraw, 120); });
+})();
+</script>
+</body>
+</html>
